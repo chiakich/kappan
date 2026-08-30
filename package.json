@@ -1,0 +1,29 @@
+{
+  "name": "kappan",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Letterpress texture and CJK typesetting — paper grain, ink-bite SVG filters, per-character jitter. Framework-free core, optional React shell.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "sideEffects": false,
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./react": {
+      "types": "./src/react.tsx",
+      "default": "./src/react.tsx"
+    }
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  }
+}
