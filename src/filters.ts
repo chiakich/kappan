@@ -29,7 +29,8 @@ export interface ChipTuning {
   chipFrequency: number
   /** 缺角佔的比例，0~1。0 為完全不缺。 */
   chipAmount: number
-  blur: number
+  /** 墨暈：邊緣往外滲一圈。見 bleedFilter。 */
+  bleed: boolean
   /** 最後把 alpha 拉硬的斜率。太低會糊，太高會把濃淡壓平。 */
   contrast: number
   /** 拉硬時的偏移，負值等於把淡的部分吃掉。 */
@@ -53,7 +54,8 @@ export interface InkTuning {
   /** 細砂眼佔的比例，0~1。 */
   pinFrequency: number
   pinAmount: number
-  blur: number
+  /** 墨暈：邊緣往外滲一圈。見 bleedFilter。 */
+  bleed: boolean
   contrast: number
   threshold: number
   grainOctaves: number
@@ -81,25 +83,26 @@ export interface FilterTuning {
   large?: Partial<InkTuning>
 }
 
+// 小字要墨暈才讀得出吃墨；大字的缺角與位移本來就看得見，再柔化只會把它糊掉。
 const SMALL: ChipTuning = {
   grainFrequency: 1.1, displace: 0.55, dilate: 0, chipFrequency: 1.7, chipAmount: 1 / 7,
-  blur: 0.2, contrast: 2.7, threshold: -0.1,
+  bleed: true, contrast: 2.7, threshold: -0.1,
   grainOctaves: 2, chipOctaves: 3, seed: 4, chipSeed: 31, margin: 14,
 }
 const TEXT: ChipTuning = {
   grainFrequency: 0.88, displace: 1.1, dilate: 0, chipFrequency: 1.05, chipAmount: 1 / 7,
-  blur: 0.28, contrast: 3.2, threshold: -0.12,
+  bleed: true, contrast: 3.2, threshold: -0.12,
   grainOctaves: 3, chipOctaves: 4, seed: 9, chipSeed: 27, margin: 16,
 }
 const HEADING: ChipTuning = {
   grainFrequency: 0.6, displace: 1.5, dilate: 0.2, chipFrequency: 0.5, chipAmount: 0.25,
-  blur: 0.22, contrast: 5.6, threshold: -0.14,
+  bleed: false, contrast: 3.3, threshold: -0.07,
   grainOctaves: 3, chipOctaves: 4, seed: 13, chipSeed: 19, margin: 22,
 }
 const LARGE: InkTuning = {
   grainFrequency: 0.34, displace: 1.6, inkFrequency: 0.055, inkFloor: 0.52,
   pinFrequency: 0.55, pinAmount: 1 / 12,
-  blur: 0.22, contrast: 1.45, threshold: -0.05,
+  bleed: false, contrast: 1.25, threshold: -0.03,
   grainOctaves: 3, inkOctaves: 3, pinOctaves: 2, seed: 7, inkSeed: 23, pinSeed: 47, margin: 12,
 }
 
@@ -119,6 +122,20 @@ const inkTable = (floor: number) => {
 
 const clamp01 = (n: number) => Math.max(0, Math.min(1, n))
 
+/**
+ * 墨暈這一道不能用 feGaussianBlur。次像素的 σ 兩個引擎算出來的東西不一樣：
+ * WebKit 走規格書那套三次 box blur 近似、box 寬取整數，Skia 在小 σ 走真高斯。
+ * 本來只差一點，但緊接著的 feFuncA 會把 alpha 拉硬，那點誤差被斜率放大就成了
+ * 整片筆畫脹開黏死 —— Safari 上缺角與濃淡會被吃得一乾二淨。
+ *
+ * 改用固定係數的 3x3 高斯核心：規格把 kernelMatrix 寫死，引擎沒有近似的餘地，
+ * 兩邊逐像素相同。代價是每像素九次取樣，只發給真的需要的那幾支。
+ */
+const bleedFilter = (input: string, bleed: boolean) =>
+  bleed
+    ? `  <feConvolveMatrix in="${input}" order="3" kernelMatrix="1 2 1 2 4 2 1 2 1" divisor="16" edgeMode="none" result="b"/>\n`
+    : ''
+
 const chipFilter = (id: string, t: ChipTuning, strength: number) => {
   const displace = t.displace * strength
   const dilate = t.dilate * strength
@@ -131,8 +148,7 @@ ${dilate > 0 ? `  <feMorphology in="rough" operator="dilate" radius="${+dilate.t
   <feColorMatrix in="mot" type="luminanceToAlpha" result="motl"/>
   <feComponentTransfer in="motl" result="chip"><feFuncA type="discrete" tableValues="${discreteTable(clamp01(t.chipAmount * strength))}"/></feComponentTransfer>
   <feComposite in="${dilate > 0 ? 'gain' : 'rough'}" in2="chip" operator="out" result="chipped"/>
-  <feGaussianBlur in="chipped" stdDeviation="${t.blur}" result="b"/>
-  <feComponentTransfer in="b"><feFuncA type="linear" slope="${t.contrast}" intercept="${t.threshold}"/></feComponentTransfer>
+${bleedFilter('chipped', t.bleed)}  <feComponentTransfer in="${t.bleed ? 'b' : 'chipped'}"><feFuncA type="linear" slope="${t.contrast}" intercept="${t.threshold}"/></feComponentTransfer>
 </filter>`
 }
 
@@ -152,8 +168,7 @@ const inkFilter = (id: string, t: InkTuning, strength: number) => {
   <feColorMatrix in="pin" type="luminanceToAlpha" result="pinl"/>
   <feComponentTransfer in="pinl" result="pinmask"><feFuncA type="discrete" tableValues="${discreteTable(clamp01(t.pinAmount * strength))}"/></feComponentTransfer>
   <feComposite in="uneven" in2="pinmask" operator="out" result="chipped"/>
-  <feGaussianBlur in="chipped" stdDeviation="${t.blur}" result="b"/>
-  <feComponentTransfer in="b"><feFuncA type="linear" slope="${t.contrast}" intercept="${t.threshold}"/></feComponentTransfer>
+${bleedFilter('chipped', t.bleed)}  <feComponentTransfer in="${t.bleed ? 'b' : 'chipped'}"><feFuncA type="linear" slope="${t.contrast}" intercept="${t.threshold}"/></feComponentTransfer>
 </filter>`
 }
 
