@@ -2,6 +2,7 @@ import { resolveOptions, type LetterpressOptions } from './options'
 import { tokensCss } from './css/tokens'
 import { textureCss } from './css/texture'
 import { typesetCss } from './css/typeset'
+import { sizesCss } from './css/sizes'
 
 /**
  * 組出完整的一份質感 CSS。純函式、沒有 DOM 也沒有框架。
@@ -11,5 +12,6 @@ import { typesetCss } from './css/typeset'
  */
 export const letterpressCss = (options: LetterpressOptions = {}) => {
   const o = resolveOptions(options)
-  return [tokensCss(o), textureCss(o), typesetCss(o)].join('\n')
+  // sizes 排最後：字號 class 要蓋得過 texture 那邊按字面指定的濾鏡。
+  return [tokensCss(o), textureCss(o), typesetCss(o), sizesCss(o)].join('\n')
 }

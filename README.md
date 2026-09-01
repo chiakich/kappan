@@ -63,7 +63,7 @@ const options = {
 - 質感疊層：`.lp-fibre` `.lp-expose` `.lp-grain` `.lp-dirt` `.lp-spine` — 都是 `position:absolute; inset:0`，**父層要自己 `position:relative`**。`.lp-dirt` 裡放 `<i>`（加 `.hair` 變髮絲）。整組濃度用 `texture` / `--texture`（0~1）調，0 就是白紙一張；超過 1 沒有意義，opacity 封頂在 1。
 - 排版：`.lp-v` 直排、`.lp-rtl` 右起橫排（活版時代的橫排字序）、`.lp-cell` 直排格內置中、`.lp-typed` 吃 `--pitch` 行高、`.lp-ruled` 直書格線、`.lp-ruled-h` 橫書格線（格線畫在字行之間，方向與書寫方向相反）。
 - 逐字：`.lp-ch`（由 `<Redacted>` / `redactedHtml()` 產生）。歪斜與濃淡是分開的兩組，歪斜與濃淡各有一個無段的旋鈕：`lean` / `--lean`（0 = 排正）與 `weight` / `--weight`（0 = 墨色均勻），`.lp-flat` 與 `.lp-even` 分別是兩者設 0 的捷徑；`.lp-even` 關掉濃淡（墨色深淺與加粗）。`.pending` 藏起來給打字動畫用。
-- 大字：`.lp-xl` 換上第四支濾鏡。前三支靠「挖掉像素」做缺角，在內文級數是斑駁，放大到 60px 以上會變成整塊筆畫被剪掉；`.lp-xl` 改成調墨的密度（低頻噪點乘進 alpha），筆畫結構保留，只是有的地方吃墨飽、有的地方虛，像印章蓋不勻。
+- 大字：`.lp-f-x` 換上第四支濾鏡。前三支靠「挖掉像素」做缺角，在內文級數是斑駁，放大到 60px 以上會變成整塊筆畫被剪掉；`.lp-f-x` 改成調墨的密度（低頻噪點乘進 alpha），筆畫結構保留，只是有的地方吃墨飽、有的地方虛，像印章蓋不勻。
 - 蓋章：`.lp-press` + `.pressed` 觸發，`--press-rot` 決定角度。
 
 ## 調濾鏡

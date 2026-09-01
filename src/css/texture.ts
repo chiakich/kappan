@@ -15,8 +15,7 @@ export const textureCss = (_o: ResolvedOptions) => `
 .lp .lbl { filter: var(--lp-s); }
 .lp h1, .lp h2, .lp h1.sg, .lp h2.sg, .lp .stamp, .lp .bar { filter: var(--lp-d); }
 .lp .stamp .sg, .lp .bar .sg { filter: none; }
-/* 大字要自己一支。放在最後，才蓋得過上面同樣兩級的 .lp .sg 之類。 */
-.lp .lp-xl { filter: var(--lp-x); }
+/* 這裡只給沒標字號的內容一個合理的預設。要指定哪一支，用字號 class 或 .lp-f-*，見 css/sizes。 */
 
 .lp-fibre, .lp-expose, .lp-grain, .lp-dirt, .lp-spine { position: absolute; inset: 0; pointer-events: none; }
 .lp-fibre {
