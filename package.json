@@ -26,7 +26,7 @@
       "optional": true
     }
   },
-  "author": "Chiaki",
+  "author": "Chiaki.C",
   "keywords": [
     "letterpress",
     "typography",
@@ -46,5 +46,13 @@
   },
   "devDependencies": {
     "esbuild": "^0.25.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chiakich/kappan.git"
+  },
+  "homepage": "https://github.com/chiakich/kappan#readme",
+  "bugs": {
+    "url": "https://github.com/chiakich/kappan/issues"
   }
 }
