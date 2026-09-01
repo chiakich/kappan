@@ -1,12 +1,12 @@
-# kappan 活版
+# kappan 網頁活版印刷套件
 
-在網頁上重現鉛字印刷的樣子：紙的纖維、墨的濃淡、字被壓歪、鉛字崩角。順便處理中文直排與活版時代的右起橫排。
+在網頁上重現鉛字印刷的樣子：紙的纖維、墨的濃淡、字被壓歪、鉛字崩角。
 
-這個套件不執行任何東西。質感全部是 CSS 加一段 SVG 濾鏡定義，逐字歪斜需要的標記可以在建置期或伺服器端產好，瀏覽器端零 JS。
+這個套件是 CSS 加一段 SVG 濾鏡定義組成的，若要進一步提升效果，可以參考下面的說明做逐字歪斜。
 
 ## 最快的方式
 
-抓 [`dist/`](dist/) 裡的兩個檔案貼上，不用建置也不綁框架：
+抓 [`dist/`](dist/) 裡的兩個檔案 `kappan.css` 與 `kappan-filters.svg` 貼上：
 
 ```html
 <link rel="stylesheet" href="kappan.css">
@@ -23,7 +23,7 @@
 
 ## 接進專案
 
-`kappan` 是一組純函式與 DOM API，零依賴；`kappan/react` 只是把結果掛成節點，要接 Vue 或 Svelte 照著抄一份就好。
+`kappan` 是一組純函式與 DOM API。`kappan/react` 是把結果掛成節點的套件工具。
 
 ```tsx
 import { LetterpressStyles, LetterpressFilters, Redacted } from 'kappan/react'
@@ -88,20 +88,8 @@ letterpressCss({ filters: pressTuning({ ink: 1.6, paper: 2 }) })
 
 ## 幾個坑
 
-濾鏡靠 `filter: url(#lp-t)` 指過去，而**指向不存在的濾鏡會讓元素整個不渲染**，不是靜默忽略。頁面若有 `<base href>` 會解析失敗，Shadow DOM 內也拿不到外部的 SVG。同一頁掛兩份要給不同的 `idPrefix`，樣式與濾鏡兩邊都要傳 —— 刻意不用隨機值，SSR 兩邊才算得出同一組 id。
-
-`filter` 疊 `mix-blend-mode: multiply` 在 Safari 上大面積文字會掉幀。文字量大時考慮只在標題套 `.lp-f-d`。
-
-還有一件學到的事寫在 `filters.ts` 的註解裡：SVG 濾鏡中凡是空間性的運算，在次像素尺度不是引擎分歧就是量化。`feGaussianBlur` 的 σ 小於 1 時 WebKit 與 Skia 算出來的東西不一樣，`feMorphology` 的半徑會被取整到整數裝置像素、跳階位置還隨螢幕的 DPR 跑。逐像素的查表運算沒有這個問題，所以墨暈用的是固定係數的卷積核。
+濾鏡靠 `filter: url(#lp-t)` 指過去，而**指向不存在的濾鏡會讓元素整個不渲染**，不是靜默忽略。頁面若有 `<base href>` 會解析失敗，Shadow DOM 內也拿不到外部的 SVG。同一頁掛兩份要給不同的 `idPrefix`，樣式與濾鏡兩邊都要傳。不可用隨機值，SSR 兩邊需為同一組 id。
 
 ## 換字體
 
 `typeFamily` 與 `latinFamily` 就是兩個字型堆字串，套件不綁任何一套字，也不幫你載字體檔。
-
-參數名刻意不叫 `songFamily`，因為傳統活版不只有宋體 —— 黑體、楷書、仿宋都鑄過鉛字，給什麼就排什麼。
-
-預設指向開源的一點明體 I.Ming，但原檔 24MB，實務上得自己切子集。注意 IPA 授權把子集視為派生程式，必須改掉字型名稱並附上授權全文。商用的話，申請 justfont 之類的 webfont 服務後把它給的別名填進去就好。
-
-直排要另外注意標點：多數明體沒有直排替代字形，得用 `punctFont` 指一套含 `vert`/`vrt2` 的字型頂上，套件會自動把它排到 `typeFamily` 前面。woff2 由使用端自己放。
-
-MIT。字型不含在內。
