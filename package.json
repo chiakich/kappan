@@ -1,7 +1,6 @@
 {
   "name": "kappan",
   "version": "0.1.0",
-  "private": true,
   "description": "Letterpress texture and CJK typesetting — paper grain, ink-bite SVG filters, per-character jitter. Framework-free core, optional React shell.",
   "license": "MIT",
   "type": "module",
@@ -19,11 +18,33 @@
     "./react": {
       "types": "./src/react.tsx",
       "default": "./src/react.tsx"
-    }
+    },
+    "./dist/*": "./dist/*"
   },
   "peerDependenciesMeta": {
     "react": {
       "optional": true
     }
+  },
+  "author": "Chiaki",
+  "keywords": [
+    "letterpress",
+    "typography",
+    "chinese",
+    "vertical-writing",
+    "svg-filter",
+    "css"
+  ],
+  "files": [
+    "src",
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "esbuild scripts/build-dist.ts --bundle --platform=node --format=esm --outfile=scripts/.build-dist.mjs --log-level=error && node scripts/.build-dist.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
   }
 }

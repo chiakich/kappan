@@ -2,12 +2,40 @@
 
 活版印刷質感 + 中文直排／右起橫排的排版套件。紙紋、墨壓濾鏡、逐字歪斜。
 
-**核心不依賴任何框架**，是一組純函式與 DOM API；React 那層只是薄殼，要接 Vue、Svelte 或原生就照著抄一份。
+**這個套件不執行任何東西。** 質感全部是 CSS 加一段 SVG 濾鏡定義，
+逐字歪斜需要的標記可以在建置期或伺服器端產好，瀏覽器端零 JS。
+
+## 兩條路
+
+**只想要質感** —— 抓 [`dist/`](dist/) 三個檔案貼上就好，不用建置、不綁框架，
+客製全靠 `.lp` 上的 CSS 變數。說明在 [dist/README.md](dist/README.md)。
+
+```html
+<link rel="stylesheet" href="kappan.css">
+<!-- kappan-filters.svg 的內容貼進 <body> -->
+<div class="lp lp-paper"><p class="lp-sz-3">常世通信 第一號</p></div>
+```
+
+**想接進專案** —— 底下是原始碼的用法。核心是一組純函式與 DOM API，
+React 那層只是薄殼，要接 Vue、Svelte 或原生就照著抄一份。
 
 | 入口 | 內容 |
 |---|---|
 | `kappan` | `letterpressCss()`、`filtersMarkup()`、`splitRedacted()`、`redactedHtml()`、`mount()`、`redact()` — 全部零依賴 |
 | `kappan/react` | `<LetterpressStyles>`、`<LetterpressFilters>`、`<Redacted>` — 只是把上面的結果掛成節點 |
+
+`pressTuning({ ink, pressure, paper, wear })` 是給不想碰濾鏡參數的人的入口：
+用印刷的成因去調，一個成因會同時牽動好幾道濾鏡。四個都設 1 就是預設值。
+
+```js
+letterpressCss({ filters: pressTuning({ ink: 1.6, paper: 2 }) })
+```
+
+重新產 `dist/`：
+
+```sh
+npm install && npm run build
+```
 
 ## 三層
 
