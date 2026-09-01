@@ -3,6 +3,8 @@
 export { letterpressCss } from './styles'
 export { filtersMarkup, FILTER_DEFAULTS, FILTER_VARIANTS, VARIANT_NAMES } from './filters'
 export type { FilterTuning, ChipTuning, InkTuning, VariantName, BleedKernel } from './filters'
+export { pressTuning, pressTexture, NEUTRAL_PRESS } from './press'
+export type { Press } from './press'
 export { splitRedacted, redactedHtml } from './redact'
 export type { RedactToken } from './redact'
 export { mount, redact } from './mount'

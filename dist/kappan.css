@@ -1,0 +1,201 @@
+/* kappan — 活版印刷質感。整份靠 .lp 上的 CSS 變數客製，見 README。 */
+
+.lp {
+  --paper: #efe9db;
+  --ink: #000;
+  --ink3: #000;
+  --red: #a2372a;
+  --type: 'I.Ming', 'IMing', 'Noto Serif TC', 'Songti TC', serif;
+  --latin: 'Courier New', ui-monospace, monospace;
+  --pitch: 46px;
+  --lean: 1;
+  --weight: 1;
+  --texture: 1;
+  --ruled: color-mix(in srgb, var(--red) 15%, transparent);
+  --lp-s: url(#lp-s);
+  --lp-t: url(#lp-t);
+  --lp-d: url(#lp-d);
+  --lp-x: url(#lp-x);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--type);
+}
+.lp *, .lp *::before, .lp *::after { box-sizing: border-box; }
+
+.lp-clean { --lp-s: url(#lp-clean-s); --lp-t: url(#lp-clean-t); --lp-d: url(#lp-clean-d); --lp-x: url(#lp-clean-x); }
+.lp-inky { --lp-s: url(#lp-inky-s); --lp-t: url(#lp-inky-t); --lp-d: url(#lp-inky-d); --lp-x: url(#lp-inky-x); }
+
+.lp .sg, .lp .tp, .lp p { filter: var(--lp-t); }
+.lp .lbl { filter: var(--lp-s); }
+.lp h1, .lp h2, .lp h1.sg, .lp h2.sg, .lp .stamp, .lp .bar { filter: var(--lp-d); }
+.lp .stamp .sg, .lp .bar .sg { filter: none; }
+/* 這裡只給沒標字號的內容一個合理的預設。要指定哪一支，用字號 class 或 .lp-f-*，見 css/sizes。 */
+
+/**
+ * 一張紙，不用加任何元素。纖維、曝光不均、噪點都收進 ::before 與 ::after。
+ *
+ * 為什麼是兩個而不是一個：噪點得壓在字上面（multiply），其餘幾層在字下面。
+ * 背景永遠在內容之後，所以單靠 background 做不到 —— 剛好兩個 pseudo 對應兩邊。
+ *
+ * 代價是直接子元素會被設成 position:relative（z-index 才咬得住），內容才夾得進中間。
+ * 需要各層獨立擺位的（例如質感要延伸到容器之外），還是用下面那組明確疊層。
+ *
+ * 裝訂陰影與髒污不在這裡 —— 那兩個是敘事道具不是紙的物理性質，要的人自己加 <i>。
+ */
+.lp-paper { position: relative; isolation: isolate; }
+.lp-paper > * { position: relative; z-index: 1; }
+.lp-paper::before, .lp-paper::after { content: ''; position: absolute; inset: 0; pointer-events: none; }
+.lp-paper::before {
+  z-index: 0;
+  opacity: var(--texture);
+  background-image:
+    radial-gradient(115% 62% at 50% 26%, rgba(255, 255, 255, .2), transparent 62%),
+    radial-gradient(100% 70% at 50% 104%, rgba(22, 19, 15, .04), transparent 72%),
+    repeating-linear-gradient(0deg, rgba(22, 19, 15, .03) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(22, 19, 15, .02) 0 1px, transparent 1px 4px);
+}
+/* .34 的層倍率預乘進 SVG 自己的 opacity —— 一個 pseudo 只有一個 opacity 可用。 */
+.lp-paper::after {
+  z-index: 2;
+  mix-blend-mode: multiply;
+  opacity: var(--texture);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='170' height='170'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='170' height='170' filter='url(%23n)' opacity='0.211'/%3E%3C/svg%3E");
+}
+
+.lp-fibre, .lp-expose, .lp-grain, .lp-dirt, .lp-spine { position: absolute; inset: 0; pointer-events: none; }
+.lp-fibre {
+  z-index: 0;
+  opacity: var(--texture);
+  background-image:
+    repeating-linear-gradient(0deg, rgba(22, 19, 15, .03) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(22, 19, 15, .02) 0 1px, transparent 1px 4px);
+}
+.lp-expose {
+  z-index: 0;
+  opacity: var(--texture);
+  background:
+    radial-gradient(115% 62% at 50% 26%, rgba(255, 255, 255, .2), transparent 62%),
+    radial-gradient(100% 70% at 50% 104%, rgba(22, 19, 15, .04), transparent 72%);
+}
+.lp-spine {
+  z-index: 0;
+  right: auto;
+  width: 118px;
+  opacity: calc(.24 * var(--texture));
+  background: linear-gradient(90deg, rgba(22, 19, 15, .85), rgba(22, 19, 15, .16) 46%, transparent);
+}
+.lp-grain {
+  z-index: 2;
+  mix-blend-mode: multiply;
+  opacity: calc(.34 * var(--texture));
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='170' height='170'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='170' height='170' filter='url(%23n)' opacity='0.62'/%3E%3C/svg%3E");
+}
+.lp-dirt { z-index: 2; opacity: var(--texture); }
+.lp-dirt i {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+  background: rgba(22, 19, 15, .46);
+}
+.lp-dirt i.hair { border-radius: 0; height: 1px; background: rgba(22, 19, 15, .28); }
+
+
+
+.lp .sg { font-family: var(--type); text-shadow: 0 0 .6px rgba(0, 0, 0, .6); }
+.lp .tp { font-family: var(--latin); text-shadow: .35px .3px 0 rgba(0, 0, 0, .2), 1.3px 1.2px 0 rgba(0, 0, 0, .1); }
+.lp .lbl {
+  font-family: var(--latin);
+  font-size: 10px;
+  letter-spacing: .2em;
+  color: var(--ink3);
+  text-transform: uppercase;
+}
+.lp h1, .lp h2 { margin: 0; font-weight: 600; }
+
+.lp .bar {
+  display: inline-block;
+  inline-size: var(--bar-w, 42px);
+  block-size: .95em;
+  background: var(--ink);
+  border-radius: 1px;
+  vertical-align: -.12em;
+}
+
+
+.lp-ch { opacity: 1; }
+.lp-ch.cj { display: inline-block; }
+.lp-ch:not(.cj) { position: relative; }
+.lp-ch:not(.cj):nth-child(19n+8) { top: calc(.6px * var(--lean)); }
+.lp-ch:not(.cj):nth-child(29n+3) { top: calc(-.6px * var(--lean)); }
+.lp-ch:not(.cj):nth-child(43n+17) { display: inline-block; transform: rotate(calc(2.4deg * var(--lean))); }
+.lp-ch:not(.cj):nth-child(59n+31) { display: inline-block; transform: rotate(calc(-2.8deg * var(--lean))); top: calc(.4px * var(--lean)); }
+.lp-ch.cj:nth-child(3n+1) { transform: rotate(calc(.45deg * var(--lean))) translateX(calc(.3px * var(--lean))); }
+.lp-ch.cj:nth-child(5n+2) { transform: rotate(calc(-.55deg * var(--lean))) translateX(calc(-.35px * var(--lean))); }
+.lp-ch.cj:nth-child(7n+4) { transform: translateY(calc(.5px * var(--lean))) rotate(calc(.25deg * var(--lean))); }
+.lp-ch.cj:nth-child(17n+3) { transform: rotate(calc(-.3deg * var(--lean))) translateY(calc(-.4px * var(--lean))); }
+.lp-ch.cj:nth-child(19n+7) { transform: rotate(calc(2.6deg * var(--lean))) translateY(calc(.7px * var(--lean))); }
+.lp-ch.cj:nth-child(23n+11) { transform: rotate(calc(.2deg * var(--lean))); }
+.lp-ch.cj:nth-child(29n+17) { transform: rotate(calc(-3.2deg * var(--lean))) translateX(calc(.6px * var(--lean))); }
+.lp-ch.cj:nth-child(31n+5) { transform: rotate(calc(1.9deg * var(--lean))) translateX(calc(-.9px * var(--lean))) translateY(calc(.6px * var(--lean))); }
+.lp-ch.cj:nth-child(41n+23) { transform: rotate(calc(-2.3deg * var(--lean))) translateY(calc(-.7px * var(--lean))); }
+
+
+.lp-ch:not(.cj):nth-child(4n+1) { color: rgba(0, 0, 0, calc(1 - .13 * var(--weight))); }
+.lp-ch:not(.cj):nth-child(7n+4) { color: rgba(0, 0, 0, calc(1 - .32 * var(--weight))); }
+.lp-ch:not(.cj):nth-child(11n+6) { color: rgba(0, 0, 0, calc(1 - .48 * var(--weight))); }
+.lp-ch:not(.cj):nth-child(29n+3) { color: rgba(0, 0, 0, calc(1 - .19 * var(--weight))); }
+.lp-ch:not(.cj):nth-child(5n+2) { text-shadow: calc(.64px * var(--weight)) 0 0 rgba(0, 0, 0, .82); }
+.lp-ch:not(.cj):nth-child(8n+5) { text-shadow: calc(.56px * var(--weight)) calc(.48px * var(--weight)) 0 rgba(0, 0, 0, .72); }
+.lp-ch:not(.cj):nth-child(13n+3) { text-shadow: calc(-.56px * var(--weight)) 0 0 rgba(0, 0, 0, .68), calc(.56px * var(--weight)) 0 0 rgba(0, 0, 0, .68); }
+.lp-ch.cj:nth-child(11n+6) { color: rgba(0, 0, 0, calc(1 - .16 * var(--weight))); }
+.lp-ch.cj:nth-child(17n+3) { color: rgba(0, 0, 0, calc(1 - .08 * var(--weight))); }
+.lp-ch.cj:nth-child(13n+8) { text-shadow: calc(.45px * var(--weight)) 0 0 #000, calc(-.45px * var(--weight)) 0 0 #000, 0 calc(.45px * var(--weight)) .3px #000; }
+.lp-ch.cj:nth-child(23n+11) { text-shadow: calc(.35px * var(--weight)) calc(.35px * var(--weight)) 0 #000; }
+
+
+.lp-flat .lp-ch { transform: none !important; top: 0 !important; }
+.lp-even .lp-ch, .lp-even .lp-ch.cj { color: inherit !important; text-shadow: inherit !important; }
+
+
+.lp-v { writing-mode: vertical-rl; }
+/* 右起橫排。漢字的 bidi 類別是強 L，光靠 direction 不會反過來，要 override 才行。
+   DOM 順序不變，所以選取與複製出來的字序仍然是對的。 */
+.lp-rtl { direction: rtl; unicode-bidi: bidi-override; }
+/* 直排格子：把「標籤＋內容」當一組，沿水平（區塊軸）置中，才會坐在格線正中間。 */
+.lp-cell { display: flex; flex-direction: column; justify-content: center; align-items: flex-start; }
+.lp-typed, .lp-typed p { line-height: var(--pitch); }
+.lp-typed p { margin: 0; }
+/* 稿紙格線。線畫在字行之間，方向與書寫方向相反：直書 .lp-ruled，橫書 .lp-ruled-h。 */
+.lp-ruled { background-image: repeating-linear-gradient(270deg, transparent 0 calc(var(--pitch) - 1px), var(--ruled) calc(var(--pitch) - 1px) var(--pitch)); }
+.lp-ruled-h { background-image: repeating-linear-gradient(180deg, transparent 0 calc(var(--pitch) - 1px), var(--ruled) calc(var(--pitch) - 1px) var(--pitch)); }
+
+.lp .lp-sz-0 { font-size: calc(42pt * var(--lp-scale, 1)); filter: var(--lp-x); }
+.lp .lp-sz-1 { font-size: calc(27.5pt * var(--lp-scale, 1)); filter: var(--lp-d); }
+.lp .lp-sz-2 { font-size: calc(21pt * var(--lp-scale, 1)); filter: var(--lp-d); }
+.lp .lp-sz-3 { font-size: calc(15.75pt * var(--lp-scale, 1)); filter: var(--lp-t); }
+.lp .lp-sz-4 { font-size: calc(13.75pt * var(--lp-scale, 1)); filter: var(--lp-t); }
+.lp .lp-sz-5 { font-size: calc(10.5pt * var(--lp-scale, 1)); filter: var(--lp-t); }
+.lp .lp-sz-6 { font-size: calc(7.875pt * var(--lp-scale, 1)); filter: var(--lp-s); }
+.lp .lp-canon { font-size: calc(48pt * var(--lp-scale, 1)); filter: var(--lp-x); }
+.lp .lp-doublepica { font-size: calc(24pt * var(--lp-scale, 1)); filter: var(--lp-d); }
+.lp .lp-doublesmallpica { font-size: calc(22pt * var(--lp-scale, 1)); filter: var(--lp-d); }
+.lp .lp-paragon { font-size: calc(20pt * var(--lp-scale, 1)); filter: var(--lp-d); }
+.lp .lp-greatprimer { font-size: calc(18pt * var(--lp-scale, 1)); filter: var(--lp-d); }
+.lp .lp-columbian { font-size: calc(16pt * var(--lp-scale, 1)); filter: var(--lp-t); }
+.lp .lp-twolinebrevier { font-size: calc(16pt * var(--lp-scale, 1)); filter: var(--lp-t); }
+.lp .lp-english { font-size: calc(14pt * var(--lp-scale, 1)); filter: var(--lp-t); }
+.lp .lp-threelinediamond { font-size: calc(13.5pt * var(--lp-scale, 1)); filter: var(--lp-t); }
+.lp .lp-pica { font-size: calc(12pt * var(--lp-scale, 1)); filter: var(--lp-t); }
+.lp .lp-smallpica { font-size: calc(11pt * var(--lp-scale, 1)); filter: var(--lp-t); }
+.lp .lp-longprimer { font-size: calc(10pt * var(--lp-scale, 1)); filter: var(--lp-t); }
+.lp .lp-bourgeois { font-size: calc(9pt * var(--lp-scale, 1)); filter: var(--lp-t); }
+.lp .lp-brevier { font-size: calc(8pt * var(--lp-scale, 1)); filter: var(--lp-s); }
+.lp .lp-minion { font-size: calc(7pt * var(--lp-scale, 1)); filter: var(--lp-s); }
+.lp .lp-nonpareil { font-size: calc(6pt * var(--lp-scale, 1)); filter: var(--lp-s); }
+.lp .lp-agate { font-size: calc(5.5pt * var(--lp-scale, 1)); filter: var(--lp-s); }
+.lp .lp-pearl { font-size: calc(5pt * var(--lp-scale, 1)); filter: var(--lp-s); }
+.lp .lp-diamond { font-size: calc(4.5pt * var(--lp-scale, 1)); filter: var(--lp-s); }
+.lp .lp-f-s { filter: var(--lp-s); }
+.lp .lp-f-t { filter: var(--lp-t); }
+.lp .lp-f-d { filter: var(--lp-d); }
+.lp .lp-f-x { filter: var(--lp-x); }

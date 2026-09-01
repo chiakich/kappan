@@ -20,6 +20,34 @@
 /** 墨暈的核心大小。數字是 feConvolveMatrix 的 order。 */
 export type BleedKernel = false | 3 | 5
 
+/**
+ * 噪點的亂數種子、疊代次數、缺塊邊緣硬度、濾鏡區域留邊。
+ *
+ * 這些不對外開放：調它們不會讓字更像鉛字，只會讓紋理換一個長相或讓濾鏡被裁掉。
+ * 真正值得調的是成因，見 press.ts。
+ */
+interface Internals {
+  grainOctaves: number
+  voidOctaves: number
+  voidHardness: number
+  seed: number
+  voidSeed: number
+  /** 濾鏡區域要留多少邊，位移大就要留多一點。 */
+  margin: number
+}
+interface ChipInternals extends Internals {
+  chipOctaves: number
+  chipSeed: number
+}
+interface InkInternals extends Internals {
+  inkOctaves: number
+  pinOctaves: number
+  inkSeed: number
+  pinSeed: number
+}
+type ChipSpec = ChipTuning & ChipInternals
+type InkSpec = InkTuning & InkInternals
+
 /** 挖式濾鏡（-s / -t / -d）的參數。 */
 export interface ChipTuning {
   /** 紙面起伏的細緻度。數字愈大顆粒愈細。 */
@@ -36,22 +64,12 @@ export interface ChipTuning {
   voidFrequency: number
   /** 缺塊的門檻，0~1。愈高洞愈稀疏；1 為完全不缺。見 voidPass。 */
   voidThreshold: number
-  /** 缺塊邊緣的硬度。見 voidPass。 */
-  voidHardness: number
-  voidOctaves: number
-  voidSeed: number
   /** 墨暈的核心大小：false 不暈、3 暈一像素、5 暈兩像素。見 bleedFilter。 */
   bleed: BleedKernel
   /** 最後把 alpha 拉硬的斜率。太低會糊，太高會把濃淡壓平。 */
   contrast: number
   /** 拉硬時的偏移，負值等於把淡的部分吃掉。 */
   threshold: number
-  grainOctaves: number
-  chipOctaves: number
-  seed: number
-  chipSeed: number
-  /** 濾鏡區域要留多少邊，位移大就要留多一點。 */
-  margin: number
 }
 
 /** 調密度式濾鏡（-x）的參數。 */
@@ -68,20 +86,10 @@ export interface InkTuning {
   /** 缺塊。欄位意義同 ChipTuning。 */
   voidFrequency: number
   voidThreshold: number
-  voidHardness: number
-  voidOctaves: number
-  voidSeed: number
   /** 墨暈的核心大小：false 不暈、3 暈一像素、5 暈兩像素。見 bleedFilter。 */
   bleed: BleedKernel
   contrast: number
   threshold: number
-  grainOctaves: number
-  inkOctaves: number
-  pinOctaves: number
-  seed: number
-  inkSeed: number
-  pinSeed: number
-  margin: number
 }
 
 export interface FilterTuning {
@@ -102,25 +110,25 @@ export interface FilterTuning {
 
 // 小字要墨暈才讀得出吃墨；大字的缺角與位移本來就看得見，再柔化只會把它糊掉。
 // 缺塊反過來：小字級破得重（門檻 .66），大字級較輕（.72）—— 見本比對出來的。
-const SMALL: ChipTuning = {
+const SMALL: ChipSpec = {
   grainFrequency: 1.1, displace: 0.55, dilate: 0, chipFrequency: 1.7, chipAmount: 1 / 7,
   voidFrequency: 0.35, voidThreshold: 0.66, voidHardness: 40, voidOctaves: 3, voidSeed: 71,
   bleed: 3, contrast: 2.7, threshold: -0.1,
   grainOctaves: 2, chipOctaves: 3, seed: 4, chipSeed: 31, margin: 14,
 }
-const TEXT: ChipTuning = {
+const TEXT: ChipSpec = {
   grainFrequency: 0.88, displace: 1.1, dilate: 0, chipFrequency: 1.05, chipAmount: 1 / 7,
   voidFrequency: 0.35, voidThreshold: 0.66, voidHardness: 40, voidOctaves: 3, voidSeed: 71,
   bleed: 3, contrast: 3.2, threshold: -0.12,
   grainOctaves: 3, chipOctaves: 4, seed: 9, chipSeed: 27, margin: 16,
 }
-const HEADING: ChipTuning = {
+const HEADING: ChipSpec = {
   grainFrequency: 0.6, displace: 1.5, dilate: 0.2, chipFrequency: 0.5, chipAmount: 0.25,
   voidFrequency: 0.35, voidThreshold: 0.72, voidHardness: 40, voidOctaves: 3, voidSeed: 71,
   bleed: false as BleedKernel, contrast: 3.3, threshold: -0.07,
   grainOctaves: 3, chipOctaves: 4, seed: 13, chipSeed: 19, margin: 22,
 }
-const LARGE: InkTuning = {
+const LARGE: InkSpec = {
   grainFrequency: 0.34, displace: 1.6, inkFrequency: 0.055, inkFloor: 0.52,
   pinFrequency: 0.55, pinAmount: 1 / 12,
   voidFrequency: 0.35, voidThreshold: 0.72, voidHardness: 40, voidOctaves: 3, voidSeed: 71,
@@ -190,7 +198,7 @@ const bleedFilter = (input: string, bleed: BleedKernel) => {
   return `  <feConvolveMatrix in="${input}" order="${bleed}" kernelMatrix="${k.matrix}" divisor="${k.divisor}" edgeMode="none" result="b"/>\n`
 }
 
-const chipFilter = (id: string, t: ChipTuning, strength: number) => {
+const chipFilter = (id: string, t: ChipSpec, strength: number) => {
   const displace = t.displace * strength
   const dilate = t.dilate * strength
   const size = 100 + t.margin * 2
@@ -207,7 +215,7 @@ ${gap.markup}${bleedFilter(gap.out, t.bleed)}  <feComponentTransfer in="${t.blee
 </filter>`
 }
 
-const inkFilter = (id: string, t: InkTuning, strength: number) => {
+const inkFilter = (id: string, t: InkSpec, strength: number) => {
   const size = 100 + t.margin * 2
   // strength 0 = 完全均勻；strength 2 = 淡處再淡一倍。
   const floor = clamp01(1 - (1 - t.inkFloor) * strength)

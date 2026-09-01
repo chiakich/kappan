@@ -10,12 +10,8 @@ export interface LetterpressOptions {
   ink?: string
   /** 次墨色，給小字級的標籤用。 */
   inkMuted?: string
-  /** 格線／細線色。 */
-  rule?: string
-  /** 硃色。印章、手寫、格線用。 */
+  /** 硃色。傳統雙色刷的第二次落版：印章、格線都用它。 */
   red?: string
-  /** 琥珀色。選取狀態用。 */
-  amber?: string
   /**
    * 活字的字堆（.sg）。傳統活版不只有宋體，黑體、楷書、仿宋都鑄過，
    * 所以這裡不綁字體風格 —— 給什麼就排什麼。
@@ -76,9 +72,7 @@ export const resolveOptions = (o: LetterpressOptions = {}): ResolvedOptions => (
   paper: o.paper ?? '#efe9db',
   ink: o.ink ?? '#000',
   inkMuted: o.inkMuted ?? '#000',
-  rule: o.rule ?? '#c7bda8',
   red: o.red ?? '#a2372a',
-  amber: o.amber ?? '#df8a42',
   typeFamily: o.typeFamily ?? "'I.Ming', 'IMing', 'Noto Serif TC', 'Songti TC', serif",
   latinFamily: o.latinFamily ?? "'Courier New', ui-monospace, monospace",
   filters: o.filters ?? {},

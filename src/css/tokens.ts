@@ -9,9 +9,7 @@ export const tokensCss = (o: ResolvedOptions) => {
   --paper: ${o.paper};
   --ink: ${o.ink};
   --ink3: ${o.inkMuted};
-  --rule: ${o.rule};
   --red: ${o.red};
-  --amber: ${o.amber};
   --type: ${type};
   --latin: ${o.latinFamily};
   --pitch: ${o.pitch};
