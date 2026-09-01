@@ -29,6 +29,14 @@ export interface ChipTuning {
   chipFrequency: number
   /** 缺角佔的比例，0~1。0 為完全不缺。 */
   chipAmount: number
+  /** 缺塊的尺度。比 chipFrequency 低一個數量級，洞才大得到能咬斷筆畫。 */
+  voidFrequency: number
+  /** 缺塊的門檻，0~1。愈高洞愈稀疏；1 為完全不缺。見 voidPass。 */
+  voidThreshold: number
+  /** 缺塊邊緣的硬度。見 voidPass。 */
+  voidHardness: number
+  voidOctaves: number
+  voidSeed: number
   /** 墨暈：邊緣往外滲一圈。見 bleedFilter。 */
   bleed: boolean
   /** 最後把 alpha 拉硬的斜率。太低會糊，太高會把濃淡壓平。 */
@@ -54,6 +62,12 @@ export interface InkTuning {
   /** 細砂眼佔的比例，0~1。 */
   pinFrequency: number
   pinAmount: number
+  /** 缺塊。欄位意義同 ChipTuning。 */
+  voidFrequency: number
+  voidThreshold: number
+  voidHardness: number
+  voidOctaves: number
+  voidSeed: number
   /** 墨暈：邊緣往外滲一圈。見 bleedFilter。 */
   bleed: boolean
   contrast: number
@@ -84,24 +98,29 @@ export interface FilterTuning {
 }
 
 // 小字要墨暈才讀得出吃墨；大字的缺角與位移本來就看得見，再柔化只會把它糊掉。
+// 缺塊反過來：小字級破得重（門檻 .66），大字級較輕（.72）—— 見本比對出來的。
 const SMALL: ChipTuning = {
   grainFrequency: 1.1, displace: 0.55, dilate: 0, chipFrequency: 1.7, chipAmount: 1 / 7,
+  voidFrequency: 0.35, voidThreshold: 0.66, voidHardness: 40, voidOctaves: 3, voidSeed: 71,
   bleed: true, contrast: 2.7, threshold: -0.1,
   grainOctaves: 2, chipOctaves: 3, seed: 4, chipSeed: 31, margin: 14,
 }
 const TEXT: ChipTuning = {
   grainFrequency: 0.88, displace: 1.1, dilate: 0, chipFrequency: 1.05, chipAmount: 1 / 7,
+  voidFrequency: 0.35, voidThreshold: 0.66, voidHardness: 40, voidOctaves: 3, voidSeed: 71,
   bleed: true, contrast: 3.2, threshold: -0.12,
   grainOctaves: 3, chipOctaves: 4, seed: 9, chipSeed: 27, margin: 16,
 }
 const HEADING: ChipTuning = {
   grainFrequency: 0.6, displace: 1.5, dilate: 0.2, chipFrequency: 0.5, chipAmount: 0.25,
+  voidFrequency: 0.35, voidThreshold: 0.72, voidHardness: 40, voidOctaves: 3, voidSeed: 71,
   bleed: false, contrast: 3.3, threshold: -0.07,
   grainOctaves: 3, chipOctaves: 4, seed: 13, chipSeed: 19, margin: 22,
 }
 const LARGE: InkTuning = {
   grainFrequency: 0.34, displace: 1.6, inkFrequency: 0.055, inkFloor: 0.52,
   pinFrequency: 0.55, pinAmount: 1 / 12,
+  voidFrequency: 0.35, voidThreshold: 0.72, voidHardness: 40, voidOctaves: 3, voidSeed: 71,
   bleed: false, contrast: 1.25, threshold: -0.03,
   grainOctaves: 3, inkOctaves: 3, pinOctaves: 2, seed: 7, inkSeed: 23, pinSeed: 47, margin: 12,
 }
@@ -123,6 +142,29 @@ const inkTable = (floor: number) => {
 const clamp01 = (n: number) => Math.max(0, Math.min(1, n))
 
 /**
+ * 缺塊：整塊筆畫不見，或一條筆畫斷成兩截。chipFrequency 那道砂眼的洞只有 1px 左右，
+ * 在內文級數是斑駁，但咬不斷任何東西；這一道的頻率低一個數量級，洞才吃得掉筆畫。
+ *
+ * 門檻直接砍在原始噪點上，不先正規化再取「最亮的百分之幾」。feTurbulence 的輸出
+ * 集中在 0.5 附近，拿 0~1 的均勻刻度去取百分比，整個可用範圍會被壓進 0.60~0.62
+ * 那一小段 —— 參數從 1/16 調到 1/140 看似動了九倍，實際只移動 0.013，畫面幾乎不變。
+ * 所以這裡的 threshold 就是噪點上的絕對位置，斜率只負責把邊緣切硬。
+ */
+const voidPass = (t: { voidFrequency: number; voidThreshold: number; voidHardness: number; voidOctaves: number; voidSeed: number }, input: string, strength: number) => {
+  // 跟其他參數一致：strength 0 等於整道關掉，2 等於破得更兇。
+  const threshold = 1 - (1 - t.voidThreshold) * strength
+  if (threshold >= 1) return { markup: '', out: input }
+  const k = t.voidHardness
+  return {
+    markup: `  <feTurbulence type="fractalNoise" baseFrequency="${t.voidFrequency}" numOctaves="${t.voidOctaves}" seed="${t.voidSeed}" result="vn"/>
+  <feColorMatrix in="vn" type="luminanceToAlpha" result="vnl"/>
+  <feComponentTransfer in="vnl" result="vm"><feFuncA type="linear" slope="${k}" intercept="${+(-k * threshold).toFixed(3)}"/></feComponentTransfer>
+  <feComposite in="${input}" in2="vm" operator="out" result="voided"/>\n`,
+    out: 'voided',
+  }
+}
+
+/**
  * 墨暈這一道不能用 feGaussianBlur。次像素的 σ 兩個引擎算出來的東西不一樣：
  * WebKit 走規格書那套三次 box blur 近似、box 寬取整數，Skia 在小 σ 走真高斯。
  * 本來只差一點，但緊接著的 feFuncA 會把 alpha 拉硬，那點誤差被斜率放大就成了
@@ -140,6 +182,7 @@ const chipFilter = (id: string, t: ChipTuning, strength: number) => {
   const displace = t.displace * strength
   const dilate = t.dilate * strength
   const size = 100 + t.margin * 2
+  const gap = voidPass(t, 'chipped', strength)
   return `
 <filter id="${id}" x="-${t.margin}%" y="-${t.margin}%" width="${size}%" height="${size}%" color-interpolation-filters="sRGB">
   <feTurbulence type="fractalNoise" baseFrequency="${t.grainFrequency}" numOctaves="${t.grainOctaves}" seed="${t.seed}" result="fib"/>
@@ -148,7 +191,7 @@ ${dilate > 0 ? `  <feMorphology in="rough" operator="dilate" radius="${+dilate.t
   <feColorMatrix in="mot" type="luminanceToAlpha" result="motl"/>
   <feComponentTransfer in="motl" result="chip"><feFuncA type="discrete" tableValues="${discreteTable(clamp01(t.chipAmount * strength))}"/></feComponentTransfer>
   <feComposite in="${dilate > 0 ? 'gain' : 'rough'}" in2="chip" operator="out" result="chipped"/>
-${bleedFilter('chipped', t.bleed)}  <feComponentTransfer in="${t.bleed ? 'b' : 'chipped'}"><feFuncA type="linear" slope="${t.contrast}" intercept="${t.threshold}"/></feComponentTransfer>
+${gap.markup}${bleedFilter(gap.out, t.bleed)}  <feComponentTransfer in="${t.bleed ? 'b' : gap.out}"><feFuncA type="linear" slope="${t.contrast}" intercept="${t.threshold}"/></feComponentTransfer>
 </filter>`
 }
 
@@ -156,6 +199,7 @@ const inkFilter = (id: string, t: InkTuning, strength: number) => {
   const size = 100 + t.margin * 2
   // strength 0 = 完全均勻；strength 2 = 淡處再淡一倍。
   const floor = clamp01(1 - (1 - t.inkFloor) * strength)
+  const gap = voidPass(t, 'chipped', strength)
   return `
 <filter id="${id}" x="-${t.margin}%" y="-${t.margin}%" width="${size}%" height="${size}%" color-interpolation-filters="sRGB">
   <feTurbulence type="fractalNoise" baseFrequency="${t.grainFrequency}" numOctaves="${t.grainOctaves}" seed="${t.seed}" result="fib"/>
@@ -168,7 +212,7 @@ const inkFilter = (id: string, t: InkTuning, strength: number) => {
   <feColorMatrix in="pin" type="luminanceToAlpha" result="pinl"/>
   <feComponentTransfer in="pinl" result="pinmask"><feFuncA type="discrete" tableValues="${discreteTable(clamp01(t.pinAmount * strength))}"/></feComponentTransfer>
   <feComposite in="uneven" in2="pinmask" operator="out" result="chipped"/>
-${bleedFilter('chipped', t.bleed)}  <feComponentTransfer in="${t.bleed ? 'b' : 'chipped'}"><feFuncA type="linear" slope="${t.contrast}" intercept="${t.threshold}"/></feComponentTransfer>
+${gap.markup}${bleedFilter(gap.out, t.bleed)}  <feComponentTransfer in="${t.bleed ? 'b' : gap.out}"><feFuncA type="linear" slope="${t.contrast}" intercept="${t.threshold}"/></feComponentTransfer>
 </filter>`
 }
 
