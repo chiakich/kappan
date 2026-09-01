@@ -48,7 +48,6 @@ const jitterGeometry = `
 .lp-ch.cj:nth-child(29n+17) { transform: rotate(calc(-3.2deg * var(--lean))) translateX(calc(.6px * var(--lean))); }
 .lp-ch.cj:nth-child(31n+5) { transform: rotate(calc(1.9deg * var(--lean))) translateX(calc(-.9px * var(--lean))) translateY(calc(.6px * var(--lean))); }
 .lp-ch.cj:nth-child(41n+23) { transform: rotate(calc(-2.3deg * var(--lean))) translateY(calc(-.7px * var(--lean))); }
-.lp-ch.pending { opacity: 0; }
 `
 
 /**
@@ -96,23 +95,6 @@ const grid = `
 .lp-ruled-h { background-image: repeating-linear-gradient(180deg, transparent 0 calc(var(--pitch) - 1px), var(--ruled) calc(var(--pitch) - 1px) var(--pitch)); }
 `
 
-/** 蓋章：從高處落下、壓扁、回彈，最後停在略透明的位置。--press-rot 決定歪幾度。 */
-const press = `
-@keyframes lp-press {
-  0% { opacity: 0; transform: scale(1.55) rotate(var(--press-rot, -6deg)); }
-  55% { opacity: .95; transform: scale(.94) rotate(var(--press-rot, -6deg)); }
-  75% { transform: scale(1.03) rotate(var(--press-rot, -6deg)); }
-  100% { opacity: .84; transform: scale(1) rotate(var(--press-rot, -6deg)); }
-}
-.lp-press { opacity: 0; }
-.lp-press.pressed { animation: lp-press .42s cubic-bezier(.2, .9, .3, 1) forwards; }
-
-@media (prefers-reduced-motion: reduce) {
-  .lp-press { opacity: .84; animation: none; }
-  .lp-ch.pending { opacity: 1; }
-}
-`
-
 export const typesetCss = (o: ResolvedOptions) => {
   const fontFace = o.punctFont
     ? `
@@ -125,5 +107,5 @@ export const typesetCss = (o: ResolvedOptions) => {
 }
 `
     : ''
-  return [fontFace, faces, jitterGeometry, jitterWeight, jitterOff, grid, press].join('\n')
+  return [fontFace, faces, jitterGeometry, jitterWeight, jitterOff, grid].join('\n')
 }
