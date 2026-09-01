@@ -17,6 +17,9 @@
  * 每一支的參數都開放調整，見 FilterTuning。
  */
 
+/** 墨暈的核心大小。數字是 feConvolveMatrix 的 order。 */
+export type BleedKernel = false | 3 | 5
+
 /** 挖式濾鏡（-s / -t / -d）的參數。 */
 export interface ChipTuning {
   /** 紙面起伏的細緻度。數字愈大顆粒愈細。 */
@@ -37,8 +40,8 @@ export interface ChipTuning {
   voidHardness: number
   voidOctaves: number
   voidSeed: number
-  /** 墨暈：邊緣往外滲一圈。見 bleedFilter。 */
-  bleed: boolean
+  /** 墨暈的核心大小：false 不暈、3 暈一像素、5 暈兩像素。見 bleedFilter。 */
+  bleed: BleedKernel
   /** 最後把 alpha 拉硬的斜率。太低會糊，太高會把濃淡壓平。 */
   contrast: number
   /** 拉硬時的偏移，負值等於把淡的部分吃掉。 */
@@ -68,8 +71,8 @@ export interface InkTuning {
   voidHardness: number
   voidOctaves: number
   voidSeed: number
-  /** 墨暈：邊緣往外滲一圈。見 bleedFilter。 */
-  bleed: boolean
+  /** 墨暈的核心大小：false 不暈、3 暈一像素、5 暈兩像素。見 bleedFilter。 */
+  bleed: BleedKernel
   contrast: number
   threshold: number
   grainOctaves: number
@@ -102,26 +105,26 @@ export interface FilterTuning {
 const SMALL: ChipTuning = {
   grainFrequency: 1.1, displace: 0.55, dilate: 0, chipFrequency: 1.7, chipAmount: 1 / 7,
   voidFrequency: 0.35, voidThreshold: 0.66, voidHardness: 40, voidOctaves: 3, voidSeed: 71,
-  bleed: true, contrast: 2.7, threshold: -0.1,
+  bleed: 3, contrast: 2.7, threshold: -0.1,
   grainOctaves: 2, chipOctaves: 3, seed: 4, chipSeed: 31, margin: 14,
 }
 const TEXT: ChipTuning = {
   grainFrequency: 0.88, displace: 1.1, dilate: 0, chipFrequency: 1.05, chipAmount: 1 / 7,
   voidFrequency: 0.35, voidThreshold: 0.66, voidHardness: 40, voidOctaves: 3, voidSeed: 71,
-  bleed: true, contrast: 3.2, threshold: -0.12,
+  bleed: 3, contrast: 3.2, threshold: -0.12,
   grainOctaves: 3, chipOctaves: 4, seed: 9, chipSeed: 27, margin: 16,
 }
 const HEADING: ChipTuning = {
   grainFrequency: 0.6, displace: 1.5, dilate: 0.2, chipFrequency: 0.5, chipAmount: 0.25,
   voidFrequency: 0.35, voidThreshold: 0.72, voidHardness: 40, voidOctaves: 3, voidSeed: 71,
-  bleed: false, contrast: 3.3, threshold: -0.07,
+  bleed: false as BleedKernel, contrast: 3.3, threshold: -0.07,
   grainOctaves: 3, chipOctaves: 4, seed: 13, chipSeed: 19, margin: 22,
 }
 const LARGE: InkTuning = {
   grainFrequency: 0.34, displace: 1.6, inkFrequency: 0.055, inkFloor: 0.52,
   pinFrequency: 0.55, pinAmount: 1 / 12,
   voidFrequency: 0.35, voidThreshold: 0.72, voidHardness: 40, voidOctaves: 3, voidSeed: 71,
-  bleed: false, contrast: 1.25, threshold: -0.03,
+  bleed: false as BleedKernel, contrast: 1.25, threshold: -0.03,
   grainOctaves: 3, inkOctaves: 3, pinOctaves: 2, seed: 7, inkSeed: 23, pinSeed: 47, margin: 12,
 }
 
@@ -170,13 +173,22 @@ const voidPass = (t: { voidFrequency: number; voidThreshold: number; voidHardnes
  * 本來只差一點，但緊接著的 feFuncA 會把 alpha 拉硬，那點誤差被斜率放大就成了
  * 整片筆畫脹開黏死 —— Safari 上缺角與濃淡會被吃得一乾二淨。
  *
- * 改用固定係數的 3x3 高斯核心：規格把 kernelMatrix 寫死，引擎沒有近似的餘地，
- * 兩邊逐像素相同。代價是每像素九次取樣，只發給真的需要的那幾支。
+ * 改用固定係數的高斯核心：規格把 kernelMatrix 寫死，引擎沒有近似的餘地，兩邊逐像素相同。
+ *
+ * 3 的暈圈只有一像素寬（緊鄰筆畫那圈 alpha = 4/16，再外一圈是 0），所以配上拉硬之後
+ * 「把筆畫變胖」的上限就是一邊 1px；要更胖得用 5，暈圈兩像素、上限加倍。
+ * 代價是取樣數從 9 變 25，所以預設留在 3，需要範圍的人才指定 5。
  */
-const bleedFilter = (input: string, bleed: boolean) =>
-  bleed
-    ? `  <feConvolveMatrix in="${input}" order="3" kernelMatrix="1 2 1 2 4 2 1 2 1" divisor="16" edgeMode="none" result="b"/>\n`
-    : ''
+const KERNELS = {
+  3: { matrix: '1 2 1 2 4 2 1 2 1', divisor: 16 },
+  5: { matrix: '1 4 6 4 1 4 16 24 16 4 6 24 36 24 6 4 16 24 16 4 1 4 6 4 1', divisor: 256 },
+} as const
+
+const bleedFilter = (input: string, bleed: BleedKernel) => {
+  if (!bleed) return ''
+  const k = KERNELS[bleed]
+  return `  <feConvolveMatrix in="${input}" order="${bleed}" kernelMatrix="${k.matrix}" divisor="${k.divisor}" edgeMode="none" result="b"/>\n`
+}
 
 const chipFilter = (id: string, t: ChipTuning, strength: number) => {
   const displace = t.displace * strength
@@ -234,8 +246,8 @@ export const FILTER_VARIANTS = {
   inky: {
     small: { dilate: 0.2, chipAmount: 0.04, voidThreshold: 0.9, contrast: 3.4 },
     text: { dilate: 0.26, chipAmount: 0.04, voidThreshold: 0.9, contrast: 4 },
-    heading: { bleed: true, dilate: 0.45, chipAmount: 0.08, voidThreshold: 0.92, contrast: 4.2 },
-    large: { bleed: true, inkFloor: 0.78, pinAmount: 0.02, voidThreshold: 0.92, contrast: 1.6 },
+    heading: { bleed: 3 as const, dilate: 0.45, chipAmount: 0.08, voidThreshold: 0.92, contrast: 4.2 },
+    large: { bleed: 3 as const, inkFloor: 0.78, pinAmount: 0.02, voidThreshold: 0.92, contrast: 1.6 },
   },
 } satisfies Record<string, FilterTuning>
 

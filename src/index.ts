@@ -2,7 +2,7 @@
 // React 用的薄殼在 'kappan/react'。
 export { letterpressCss } from './styles'
 export { filtersMarkup, FILTER_DEFAULTS, FILTER_VARIANTS, VARIANT_NAMES } from './filters'
-export type { FilterTuning, ChipTuning, InkTuning, VariantName } from './filters'
+export type { FilterTuning, ChipTuning, InkTuning, VariantName, BleedKernel } from './filters'
 export { splitRedacted, redactedHtml } from './redact'
 export type { RedactToken } from './redact'
 export { mount, redact } from './mount'
