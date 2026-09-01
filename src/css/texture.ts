@@ -17,6 +17,37 @@ export const textureCss = (_o: ResolvedOptions) => `
 .lp .stamp .sg, .lp .bar .sg { filter: none; }
 /* 這裡只給沒標字號的內容一個合理的預設。要指定哪一支，用字號 class 或 .lp-f-*，見 css/sizes。 */
 
+/**
+ * 一張紙，不用加任何元素。纖維、曝光不均、噪點都收進 ::before 與 ::after。
+ *
+ * 為什麼是兩個而不是一個：噪點得壓在字上面（multiply），其餘幾層在字下面。
+ * 背景永遠在內容之後，所以單靠 background 做不到 —— 剛好兩個 pseudo 對應兩邊。
+ *
+ * 代價是直接子元素會被設成 position:relative（z-index 才咬得住），內容才夾得進中間。
+ * 需要各層獨立擺位的（例如質感要延伸到容器之外），還是用下面那組明確疊層。
+ *
+ * 裝訂陰影與髒污不在這裡 —— 那兩個是敘事道具不是紙的物理性質，要的人自己加 <i>。
+ */
+.lp-paper { position: relative; isolation: isolate; }
+.lp-paper > * { position: relative; z-index: 1; }
+.lp-paper::before, .lp-paper::after { content: ''; position: absolute; inset: 0; pointer-events: none; }
+.lp-paper::before {
+  z-index: 0;
+  opacity: var(--texture);
+  background-image:
+    radial-gradient(115% 62% at 50% 26%, rgba(255, 255, 255, .2), transparent 62%),
+    radial-gradient(100% 70% at 50% 104%, rgba(22, 19, 15, .04), transparent 72%),
+    repeating-linear-gradient(0deg, rgba(22, 19, 15, .03) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(22, 19, 15, .02) 0 1px, transparent 1px 4px);
+}
+/* .34 的層倍率預乘進 SVG 自己的 opacity —— 一個 pseudo 只有一個 opacity 可用。 */
+.lp-paper::after {
+  z-index: 2;
+  mix-blend-mode: multiply;
+  opacity: var(--texture);
+  background-image: ${grainUri(170, '0.82', 4, '0.211')};
+}
+
 .lp-fibre, .lp-expose, .lp-grain, .lp-dirt, .lp-spine { position: absolute; inset: 0; pointer-events: none; }
 .lp-fibre {
   z-index: 0;
@@ -30,7 +61,7 @@ export const textureCss = (_o: ResolvedOptions) => `
   opacity: var(--texture);
   background:
     radial-gradient(115% 62% at 50% 26%, rgba(255, 255, 255, .2), transparent 62%),
-    radial-gradient(100% 70% at 50% 104%, rgba(22, 19, 15, .12), transparent 72%);
+    radial-gradient(100% 70% at 50% 104%, rgba(22, 19, 15, .04), transparent 72%);
 }
 .lp-spine {
   z-index: 0;
