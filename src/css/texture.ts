@@ -1,16 +1,24 @@
 import type { ResolvedOptions } from '../options'
+import { VARIANT_NAMES } from '../filters'
 
 /** feTurbulence 直接畫成一張灰噪點貼圖，比在 CSS 疊漸層省事也自然得多。 */
 export const grainUri = (size: number, freq: string, octaves: number, opacity: string) =>
   `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='${size}' height='${size}'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='${freq}' numOctaves='${octaves}' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='${size}' height='${size}' filter='url(%23n)' opacity='${opacity}'/%3E%3C/svg%3E")`
 
+/** 變體 class：只是把四個 --lp-* 指到另一套濾鏡，所以可以只套在某個子樹上。 */
+const variantCss = (prefix: string) =>
+  VARIANT_NAMES
+    .map((v) => `.lp-${v} { ${['s', 't', 'd', 'x'].map((t) => `--lp-${t}: url(#${prefix}-${v}-${t});`).join(' ')} }`)
+    .join('\n')
+
 /**
  * 紙的物理層：纖維、曝光不均、噪點、髒污、裝訂陰影，加上三支墨壓濾鏡的套用規則。
  *
- * 這幾個 .lp-* 疊層都是 position:absolute inset:0，父層要自己是 position:relative。
+ * 預設路徑是 .lp-paper（零元素）；下面那組明確疊層留給需要各層獨立擺位的場合，
+ * 它們是 position:absolute inset:0，父層要自己是 position:relative。
  * 濃度統一乘上 --texture（0~1），0 就是白紙一張。再往上加沒用，opacity 封頂在 1。
  */
-export const textureCss = (_o: ResolvedOptions) => `
+export const textureCss = (o: ResolvedOptions) => `${o.variants ? variantCss(o.idPrefix) + '\n' : ''}
 .lp .sg, .lp .tp, .lp p { filter: var(--lp-t); }
 .lp .lbl { filter: var(--lp-s); }
 .lp h1, .lp h2, .lp h1.sg, .lp h2.sg, .lp .stamp, .lp .bar { filter: var(--lp-d); }

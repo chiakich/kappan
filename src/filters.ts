@@ -217,9 +217,34 @@ ${gap.markup}${bleedFilter(gap.out, t.bleed)}  <feComponentTransfer in="${t.blee
 }
 
 /**
- * 產生四支濾鏡的 SVG 字串。純函式，沒有任何框架成分；React 版把它塞進 <svg> 就好。
+ * 預先調好的幾種狀態。靜態發布時 CSS 檔調不動濾鏡（那是 SVG 不是變數），
+ * 所以與其開一堆參數，不如直接附幾套換 class 就能切。
+ *
+ * 命名照的是實體的失敗模式：墨太多會糊胖，墨太少會斷，字太舊會崩角。
  */
-export const filtersMarkup = (idPrefix = 'lp', tuning: FilterTuning = {}) => {
+export const FILTER_VARIANTS = {
+  /** 新字新墨，幾乎不破。小字級的內文或介面用。 */
+  clean: { strength: 0.35 },
+  /**
+   * 吃墨：滾筒上墨太多，筆畫脹開糊在一起，但不太破。
+   *
+   * 沒有反方向的「破更兇」那一套 —— 實測 strength 1.15 跟預設幾乎分不出來、
+   * 1.3 就已經難看，中間沒有可用區間。預設值本身就接近破損的上限了。
+   */
+  inky: {
+    small: { dilate: 0.2, chipAmount: 0.04, voidThreshold: 0.9, contrast: 3.4 },
+    text: { dilate: 0.26, chipAmount: 0.04, voidThreshold: 0.9, contrast: 4 },
+    heading: { bleed: true, dilate: 0.45, chipAmount: 0.08, voidThreshold: 0.92, contrast: 4.2 },
+    large: { bleed: true, inkFloor: 0.78, pinAmount: 0.02, voidThreshold: 0.92, contrast: 1.6 },
+  },
+} satisfies Record<string, FilterTuning>
+
+export type VariantName = keyof typeof FILTER_VARIANTS
+
+/** CSS 那邊要照這份產 class，兩邊名字必須同源，否則會出現指向不存在濾鏡的 class。 */
+export const VARIANT_NAMES = Object.keys(FILTER_VARIANTS) as VariantName[]
+
+const oneSet = (idPrefix: string, tuning: FilterTuning) => {
   const strength = tuning.strength ?? 1
   return [
     chipFilter(`${idPrefix}-s`, { ...SMALL, ...tuning.small }, strength),
@@ -227,6 +252,23 @@ export const filtersMarkup = (idPrefix = 'lp', tuning: FilterTuning = {}) => {
     chipFilter(`${idPrefix}-d`, { ...HEADING, ...tuning.heading }, strength),
     inkFilter(`${idPrefix}-x`, { ...LARGE, ...tuning.large }, strength),
   ].join('\n')
+}
+
+/**
+ * 產生濾鏡的 SVG 字串。純函式，沒有任何框架成分；React 版把它塞進 <svg> 就好。
+ *
+ * variants 打開才會多產那三套。務必跟 letterpressCss 的同名選項一致 ——
+ * CSS 給了 class 而 SVG 沒給濾鏡的話，`filter: url(#不存在)` 會讓元素整個不渲染，
+ * 不是靜默忽略。
+ */
+export const filtersMarkup = (idPrefix = 'lp', tuning: FilterTuning = {}, variants = false) => {
+  const sets = [oneSet(idPrefix, tuning)]
+  if (variants) {
+    for (const [name, v] of Object.entries(FILTER_VARIANTS)) {
+      sets.push(oneSet(`${idPrefix}-${name}`, { ...tuning, ...v }))
+    }
+  }
+  return sets.join('\n')
 }
 
 export const FILTER_DEFAULTS = { small: SMALL, text: TEXT, heading: HEADING, large: LARGE } as const

@@ -23,7 +23,7 @@ export const mount = (options: LetterpressOptions = {}, root: Document | ShadowR
   svg.setAttribute('aria-hidden', 'true')
   svg.setAttribute('focusable', 'false')
   svg.setAttribute('style', 'position:absolute')
-  svg.innerHTML = filtersMarkup(o.idPrefix, o.filters)
+  svg.innerHTML = filtersMarkup(o.idPrefix, o.filters, o.variants)
 
   host.append(style, svg)
   return () => {

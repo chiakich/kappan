@@ -27,6 +27,12 @@ export interface LetterpressOptions {
   latinFamily?: string
   /** 四支墨壓濾鏡的參數。見 FilterTuning。 */
   filters?: FilterTuning
+  /**
+   * 多產幾套預調好的濾鏡（.lp-clean / .lp-worn / .lp-inky），換 class 就能切。
+   * filtersMarkup 也要傳同一個值 —— CSS 給了 class 而 SVG 沒給濾鏡的話，
+   * `filter: url(#不存在)` 會讓元素整個不渲染。
+   */
+  variants?: boolean
   /** 直排格線間距，也是 .lp-typed 的行高。 */
   pitch?: string
   /**
@@ -76,6 +82,7 @@ export const resolveOptions = (o: LetterpressOptions = {}): ResolvedOptions => (
   typeFamily: o.typeFamily ?? "'I.Ming', 'IMing', 'Noto Serif TC', 'Songti TC', serif",
   latinFamily: o.latinFamily ?? "'Courier New', ui-monospace, monospace",
   filters: o.filters ?? {},
+  variants: o.variants ?? false,
   pitch: o.pitch ?? '46px',
   lean: o.lean ?? 1,
   weight: o.weight ?? 1,

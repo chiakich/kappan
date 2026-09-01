@@ -27,7 +27,7 @@ export const LetterpressFilters = (options: LetterpressOptions = {}) => {
       aria-hidden="true"
       focusable="false"
       style={{ position: 'absolute' }}
-      dangerouslySetInnerHTML={{ __html: filtersMarkup(o.idPrefix, o.filters) }}
+      dangerouslySetInnerHTML={{ __html: filtersMarkup(o.idPrefix, o.filters, o.variants) }}
     />
   )
 }
