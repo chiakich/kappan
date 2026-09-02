@@ -29,25 +29,32 @@ const faces = `
  *
  * 每個位移量都乘上 --lean，所以歪斜程度可以無段調整：0 是完全排正，1 是預設，
  * 調到 2 就是排字工今天狀況很差。`.lp-flat` 是 --lean: 0 的捷徑。
+ *
+ * 位移寫成 em 不是 px。物理上排字工的手誤確實是絕對距離，跟字身多大無關 ——
+ * 但那代表同一個 --lean 在 14px 的小字上是字身的 6%，在一號 27.5pt 上只有 2.5%，
+ * 同一頁並排就會覺得小字張牙舞爪、大字溫吞。濾鏡那邊早就因為同樣的理由按字號分成
+ * 四級（噪點的週期也是絕對長度），歪斜這邊沿用同一個結論：讓 --lean: 1 在任何字級
+ * 都是同一個視覺強度。基準取 16px，所以內文級數的樣子跟以前完全一樣。
+ * 旋轉不用動 —— 角度本來就與尺寸無關。
  * 需要 splitRedacted / <Redacted> 產生的 .lp-ch / .lp-ch.cj 標記。
  */
 const jitterGeometry = `
 .lp-ch { opacity: 1; }
 .lp-ch.cj { display: inline-block; }
 .lp-ch:not(.cj) { position: relative; }
-.lp-ch:not(.cj):nth-child(19n+8) { top: calc(.6px * var(--lean)); }
-.lp-ch:not(.cj):nth-child(29n+3) { top: calc(-.6px * var(--lean)); }
+.lp-ch:not(.cj):nth-child(19n+8) { top: calc(0.0375em * var(--lean)); }
+.lp-ch:not(.cj):nth-child(29n+3) { top: calc(-0.0375em * var(--lean)); }
 .lp-ch:not(.cj):nth-child(43n+17) { display: inline-block; transform: rotate(calc(2.4deg * var(--lean))); }
-.lp-ch:not(.cj):nth-child(59n+31) { display: inline-block; transform: rotate(calc(-2.8deg * var(--lean))); top: calc(.4px * var(--lean)); }
-.lp-ch.cj:nth-child(3n+1) { transform: rotate(calc(.45deg * var(--lean))) translateX(calc(.3px * var(--lean))); }
-.lp-ch.cj:nth-child(5n+2) { transform: rotate(calc(-.55deg * var(--lean))) translateX(calc(-.35px * var(--lean))); }
-.lp-ch.cj:nth-child(7n+4) { transform: translateY(calc(.5px * var(--lean))) rotate(calc(.25deg * var(--lean))); }
-.lp-ch.cj:nth-child(17n+3) { transform: rotate(calc(-.3deg * var(--lean))) translateY(calc(-.4px * var(--lean))); }
-.lp-ch.cj:nth-child(19n+7) { transform: rotate(calc(2.6deg * var(--lean))) translateY(calc(.7px * var(--lean))); }
+.lp-ch:not(.cj):nth-child(59n+31) { display: inline-block; transform: rotate(calc(-2.8deg * var(--lean))); top: calc(0.025em * var(--lean)); }
+.lp-ch.cj:nth-child(3n+1) { transform: rotate(calc(.45deg * var(--lean))) translateX(calc(0.0187em * var(--lean))); }
+.lp-ch.cj:nth-child(5n+2) { transform: rotate(calc(-.55deg * var(--lean))) translateX(calc(-0.0219em * var(--lean))); }
+.lp-ch.cj:nth-child(7n+4) { transform: translateY(calc(0.0312em * var(--lean))) rotate(calc(.25deg * var(--lean))); }
+.lp-ch.cj:nth-child(17n+3) { transform: rotate(calc(-.3deg * var(--lean))) translateY(calc(-0.025em * var(--lean))); }
+.lp-ch.cj:nth-child(19n+7) { transform: rotate(calc(2.6deg * var(--lean))) translateY(calc(0.0437em * var(--lean))); }
 .lp-ch.cj:nth-child(23n+11) { transform: rotate(calc(.2deg * var(--lean))); }
-.lp-ch.cj:nth-child(29n+17) { transform: rotate(calc(-3.2deg * var(--lean))) translateX(calc(.6px * var(--lean))); }
-.lp-ch.cj:nth-child(31n+5) { transform: rotate(calc(1.9deg * var(--lean))) translateX(calc(-.9px * var(--lean))) translateY(calc(.6px * var(--lean))); }
-.lp-ch.cj:nth-child(41n+23) { transform: rotate(calc(-2.3deg * var(--lean))) translateY(calc(-.7px * var(--lean))); }
+.lp-ch.cj:nth-child(29n+17) { transform: rotate(calc(-3.2deg * var(--lean))) translateX(calc(0.0375em * var(--lean))); }
+.lp-ch.cj:nth-child(31n+5) { transform: rotate(calc(1.9deg * var(--lean))) translateX(calc(-0.0563em * var(--lean))) translateY(calc(0.0375em * var(--lean))); }
+.lp-ch.cj:nth-child(41n+23) { transform: rotate(calc(-2.3deg * var(--lean))) translateY(calc(-0.0437em * var(--lean))); }
 `
 
 /**
@@ -60,6 +67,11 @@ const jitterGeometry = `
  *   - 漢字的墨面積大，一點濃淡差就讀得到；同樣的差落在細細的字母上幾乎看不見
  * 倍率直接寫進係數而不是另開一個變數 —— 自訂屬性的 calc() 在宣告處就算完了，
  * 子層覆蓋 --weight 不會讓衍生變數重算，那樣滑桿會變成只動中文。
+ *
+ * 位移刻意維持 px，不像歪斜那樣換成 em。墨往外滲多遠是紙纖維的性質，跟這顆鉛字
+ * 多大無關 —— 一號的字沾多了墨，邊緣往外胖的也就是那零點幾毫米，不會因為字大就
+ * 胖三倍。換成 em 的話小字的濃淡會不夠、大字會誇張到不像話。深淺是 alpha，
+ * 本來就與尺寸無關。
  */
 const jitterWeight = `
 .lp-ch:not(.cj):nth-child(4n+1) { color: rgba(0, 0, 0, calc(1 - .13 * var(--weight))); }
