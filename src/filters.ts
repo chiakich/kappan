@@ -120,14 +120,14 @@ export interface FilterTuning {
 const SMALL: ChipSpec = {
   grainFrequency: 1.1, displace: 0.55, dilate: 0, chipFrequency: 1.7, chipAmount: 1 / 7,
   voidFrequency: 0.35, voidThreshold: 0.66, voidHardness: 40, voidOctaves: 3, voidSeed: 71,
-  round: 3, roundThreshold: 0.42,
+  round: false as BleedKernel, roundThreshold: 0.42,
   bleed: 3, contrast: 2.7, threshold: -0.1,
   grainOctaves: 2, chipOctaves: 3, seed: 4, chipSeed: 31, margin: 14,
 }
 const TEXT: ChipSpec = {
   grainFrequency: 0.88, displace: 1.1, dilate: 0, chipFrequency: 1.05, chipAmount: 1 / 7,
   voidFrequency: 0.35, voidThreshold: 0.66, voidHardness: 40, voidOctaves: 3, voidSeed: 71,
-  round: 3, roundThreshold: 0.42,
+  round: false as BleedKernel, roundThreshold: 0.42,
   bleed: 3, contrast: 3.2, threshold: -0.12,
   grainOctaves: 3, chipOctaves: 4, seed: 9, chipSeed: 27, margin: 16,
 }
@@ -218,8 +218,10 @@ const bleedFilter = (input: string, bleed: BleedKernel) => {
  * 門檻 .5 大致保持面積（純圓角），往下走就偏積墨。排在整條鏈路最前面：
  * 墨轉印的當下字形就已經圓了，之後才被紙面推歪、才被磨損咬掉。
  *
- * 圓的半徑是絕對長度（核心大小決定），所以字級愈小佔比愈大。-x 那支預設關掉：
- * 初號 42pt 上的一像素看不出來，只是白花取樣。
+ * 圓的半徑是絕對長度（核心大小決定），所以字級愈小佔比愈大 —— 這決定了誰能開。
+ * -s 與 -t 關掉：明體的橫畫在五號、六號上是次像素的，3×3 卷積後峰值只剩 .25，
+ * 低於門檻 .42，整條橫畫在進入後面所有濾鏡之前就被切掉了。-x 一樣關掉，
+ * 理由相反：初號 42pt 上的一像素看不出來。
  */
 const roundFilter = (t: { round: BleedKernel; roundThreshold: number }, out: string) => {
   if (!t.round) return { markup: '', out: 'SourceGraphic' }
