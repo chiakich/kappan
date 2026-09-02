@@ -104,6 +104,21 @@ class 同時決定字級與該用哪支濾鏡 —— 這兩件事本來就綁在
 - `.lp-fibre` `.lp-expose` `.lp-grain` `.lp-dirt` `.lp-spine` —— 需要各層獨立擺位時才用，
   父層要自己 `position: relative`。`.lp-paper` 已經涵蓋常見情況。
 
+## 要動濾鏡的話
+
+顏色、紙紋、歪斜全都只是 CSS 變數，改 `.lp` 就好。但濾鏡本身的參數是寫進 SVG 的，
+要在瀏覽器裡即時改就得重新產生那份 markup —— `kappan.js` 是整套的瀏覽器版：
+
+```js
+import { mount, pressTuning } from './kappan.js'
+
+// 四個成因，不是四道濾鏡。動一個，好幾支濾鏡的參數會一起變。
+const dispose = mount({ filters: pressTuning({ ink: 1.4, pressure: .8, paper: 1.6, wear: 1.2 }) })
+```
+
+`mount()` 會把樣式與濾鏡塞進 `<head>`，回傳一個拆掉它們的函式；換參數就是 dispose 再 mount 一次。
+不需要這件事的話，`kappan.css` 加 `kappan-filters.svg` 就夠了，這個檔案可以不要。
+
 ## 一件要知道的事
 
 這份 CSS 不執行任何東西，但**濾鏡必須是文件裡真的有一個 `<svg>`**。
