@@ -42,7 +42,8 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "esbuild scripts/build-dist.ts --bundle --platform=node --format=esm --outfile=scripts/.build-dist.mjs --log-level=error && node scripts/.build-dist.mjs"
+    "build": "esbuild src/index.ts --bundle --format=esm --outfile=dist/kappan.js --log-level=error && esbuild scripts/build-dist.ts --bundle --platform=node --format=esm --outfile=scripts/.build-dist.mjs --log-level=error && node scripts/.build-dist.mjs",
+    "demo": "python3 -m http.server 4173"
   },
   "devDependencies": {
     "esbuild": "^0.25.0"

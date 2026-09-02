@@ -4,6 +4,14 @@
 
 這個套件是 CSS 加一段 SVG 濾鏡定義組成的，若要進一步提升效果，可以參考下面的說明做逐字歪斜。
 
+[`demo/`](demo/) 是一頁鉛字產生器：打一段字，調墨、調紙、調壓力、調顏色，看它被印出來的樣子。
+沒有建置步驟，`npm run build` 之後開一個靜態伺服器就能跑：
+
+```
+npm run build
+npm run demo      # http://localhost:4173/demo/
+```
+
 ## 最快的方式
 
 抓 [`dist/`](dist/) 裡的兩個檔案 `kappan.css` 與 `kappan-filters.svg` 貼上：

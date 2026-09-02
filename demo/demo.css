@@ -1,0 +1,106 @@
+/* 示範頁的版面。紙、墨、字面、逐字歪斜全部來自 kappan.css，這裡只管「擺哪、多大」。
+   語彙照見本帖：線框按鈕、英文小標籤、細線分節，沒有第二套顏色。 */
+@import url('https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap');
+
+.lp {
+  /* 見本帖走白紙黑墨，硃色只用在第二次落版的地方。 */
+  --paper: #ffffff;
+  --ink: #000000;
+  --ink3: #000000;
+  --red: #9d3327;
+  --type: 'lp-punct', 'Songti TC', 'Noto Serif TC', serif;
+  --latin: 'Courier Prime', 'Courier New', ui-monospace, monospace;
+  --pitch: 1.9em;
+}
+
+body { margin: 0; min-height: 100vh; }
+main { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: 72px 24px 96px; }
+
+/* ── 扉頁 ─────────────────────────────────────────── */
+header { text-align: center; margin-bottom: 56px; }
+.eyebrow { font-size: 14px; letter-spacing: .22em; text-indent: .11em; margin: 0; }
+h1 { margin: 18px 0 0; font-size: clamp(34px, 7vw, 62px); font-weight: 600; letter-spacing: .32em; text-indent: .16em; }
+.sub { margin: 18px 0 0; font-size: 13px; letter-spacing: .14em; }
+.lede { max-width: 620px; margin: 28px auto 0; font-size: 16px; line-height: 1.95; text-align: justify; }
+.rule { width: 46px; margin: 34px auto; border-top: 1px solid var(--ink); }
+
+/* ── 控制列 ───────────────────────────────────────── */
+/* class 名要避開 kappan 佔掉的那些：.sg .tp .lbl .cj .bar .stamp .hair .lp-*。
+   .bar 尤其危險 —— 那是遮蓋條（黑色實心塊、寬度寫死 42px），拿來當控制列
+   會被壓成一根黑條，而且不會有任何錯誤訊息。.sg / .tp / .lbl 是刻意借用的字面語彙。 */
+.toolbar { display: flex; flex-wrap: wrap; gap: 18px 34px; justify-content: center; margin-bottom: 28px; }
+.group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.group .lbl { margin: 0; }
+
+/* 見本帖上的按鈕：線框與填滿兩種狀態。 */
+.key {
+  padding: 6px 12px;
+  border: 1px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  font-size: 13px;
+  letter-spacing: .1em;
+  cursor: pointer;
+  transition: background .2s ease, color .2s ease;
+}
+.key[aria-pressed='true'] { background: var(--ink); color: var(--paper); }
+
+select {
+  padding: 6px 10px;
+  border: 1px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--type);
+  font-size: 13px;
+  max-width: 210px;
+  cursor: pointer;
+}
+input[type='color'] {
+  width: 44px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--ink);
+  background: none;
+  cursor: pointer;
+}
+
+/* ── 調節鈕 ───────────────────────────────────────── */
+.dials { display: flex; flex-wrap: wrap; gap: 20px 30px; justify-content: center; margin-bottom: 28px; }
+.dial { flex: 1 1 170px; max-width: 240px; }
+.dial .head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+.dial .head p { margin: 0; }
+.dial .val { font-family: var(--latin); font-size: 12px; }
+.dial input { width: 100%; cursor: pointer; accent-color: var(--ink); }
+.dial .why { margin: 4px 0 0; font-size: 11px; line-height: 1.5; opacity: .62; }
+
+/* ── 試打區 ───────────────────────────────────────── */
+/* 字號 class 掛在編輯區本身，不掛在外層 —— kappan 的 `.lp .sg, .lp p` 已經給了 -t，
+   外層再掛一個字號的濾鏡就會疊兩層，卷積與位移各跑兩遍，字會糊掉。 */
+#editor {
+  border: 1px solid var(--ink);
+  padding: 34px 38px;
+  min-height: 240px;
+  height: 300px;
+  resize: vertical;
+  overflow: auto;
+  outline: none;
+  white-space: pre-wrap;
+  cursor: text;
+  background: none;
+  position: relative;
+  z-index: 1;
+}
+#editor.lp-v { resize: horizontal; min-width: 340px; height: 460px; }
+
+.hint { max-width: 620px; margin: 14px auto 44px; font-size: 11px; line-height: 1.7; text-align: center; opacity: .62; }
+.hint a, .colophon a { color: var(--red); text-decoration: underline; text-underline-offset: 2px; }
+
+/* ── 算出來的參數 ─────────────────────────────────── */
+/* 程式碼是第二次落版：硃色的框。 */
+.recipe { border: 1px solid color-mix(in srgb, var(--red) 40%, transparent); padding: 22px 26px; }
+.recipe .lbl { margin: 0 0 12px; }
+.recipe pre { margin: 0; font-size: 12px; line-height: 1.9; white-space: pre-wrap; word-break: break-all; }
+.recipe .hint { margin: 14px 0 0; text-align: left; max-width: none; }
+code { font-family: var(--latin); font-size: .92em; }
+
+.colophon { text-align: center; font-size: 11px; letter-spacing: .02em; opacity: .7; }

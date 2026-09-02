@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>kappan · 鉛字產生器</title>
+<meta name="description" content="打一段字，調墨、調紙、調壓力，看它被印出來的樣子。kappan 的示範頁。">
+<link rel="stylesheet" href="../dist/kappan.css">
+<link rel="stylesheet" href="./demo.css">
+</head>
+<!-- 整頁就是一張紙。.lp 給顏色與字體，.lp-paper 給紙紋，不需要額外的疊層元素。 -->
+<body class="lp lp-paper">
+
+<main>
+  <header>
+    <p class="tp eyebrow">KAPPAN · LETTERPRESS FOR THE WEB</p>
+    <h1 class="sg lp-f-x">鉛字產生器</h1>
+    <p class="tp sub">TYPE IT AND PRESS IT</p>
+    <p class="sg lede">
+      打一段字，調墨、調紙、調壓力，看它被印出來的樣子。
+      底下那塊是真的 HTML 文字 —— 可以選取、可以複製、可以被搜尋，變的只是它被畫出來的樣子。
+    </p>
+    <div class="rule"></div>
+  </header>
+
+  <!-- ── 排法與字 ─────────────────────────────────── -->
+  <section class="toolbar">
+    <div class="group">
+      <p class="lbl">排法</p>
+      <button type="button" class="sg key" data-dir="h" aria-pressed="true">橫排</button>
+      <button type="button" class="sg key" data-dir="v" aria-pressed="false">直排</button>
+      <button type="button" class="sg key" data-dir="rtl" aria-pressed="false">右起橫排</button>
+    </div>
+
+    <div class="group">
+      <p class="lbl">字號</p>
+      <select id="size" class="sg"></select>
+    </div>
+
+    <div class="group">
+      <p class="lbl">字體</p>
+      <select id="face" class="sg"><option value="">系統明體</option></select>
+      <select id="weight" class="sg" aria-label="字重"><option value="">—</option></select>
+    </div>
+  </section>
+
+  <!-- ── 印刷的成因 ───────────────────────────────── -->
+  <section class="dials" id="dials"></section>
+
+  <section class="toolbar">
+    <div class="group">
+      <p class="lbl">印壞的樣子</p>
+      <span id="presets"></span>
+    </div>
+    <div class="group">
+      <p class="lbl">紙</p><input id="c-paper" type="color" value="#ffffff" aria-label="紙色">
+      <p class="lbl">墨</p><input id="c-ink" type="color" value="#000000" aria-label="墨色">
+      <p class="lbl">硃</p><input id="c-red" type="color" value="#9d3327" aria-label="硃色">
+    </div>
+  </section>
+
+  <!-- ── 試打 ─────────────────────────────────────── -->
+  <!-- 編輯區的內容刻意不由外面重畫：contenteditable 一旦被換掉，輸入法的組字就斷了。
+       逐字歪斜要把每個字包成 span，那跟編輯衝突，所以離開才排版，點回來就還原。 -->
+  <div id="editor" class="sg lp-typed" contenteditable spellcheck="false"></div>
+  <p class="tp hint" id="status">字體由 <a href="https://font.emtech.cc" target="_blank" rel="noreferrer">emfont</a> 按你打的字現切，一次只下載用得到的那幾個字。點進編輯區可以改字，移開就排版。右下角可以拉大小。</p>
+
+  <!-- ── 算出來的參數 ─────────────────────────────── -->
+  <section class="recipe">
+    <p class="lbl">算出來的濾鏡參數 · 一般行文那一級</p>
+    <pre class="tp" id="recipe"></pre>
+    <p class="tp hint">
+      這是 <code>pressTuning()</code> 從上面四個成因算出來的。動一個成因，好幾個數字會一起變 ——
+      那個對應關係才是整套東西的核心，剩下的都只是實作。
+    </p>
+  </section>
+
+  <div class="rule"></div>
+  <p class="tp colophon">
+    <a href="https://github.com/chiakich/kappan">kappan</a> · MIT ·
+    字型不含在內，<code>--type</code> 指到哪套字是你自己的事
+  </p>
+</main>
+
+<script type="module" src="./demo.js"></script>
+</body>
+</html>
