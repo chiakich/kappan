@@ -64,6 +64,10 @@ export interface ChipTuning {
   voidFrequency: number
   /** 缺塊的門檻，0~1。愈高洞愈稀疏；1 為完全不缺。見 voidPass。 */
   voidThreshold: number
+  /** 圓角與積墨的核心大小，false 為不做。見 roundFilter。 */
+  round: BleedKernel
+  /** 圓角與積墨的門檻。.5 接近純圓角，愈低愈偏積墨（整體也會胖一點）。 */
+  roundThreshold: number
   /** 墨暈的核心大小：false 不暈、3 暈一像素、5 暈兩像素。見 bleedFilter。 */
   bleed: BleedKernel
   /** 最後把 alpha 拉硬的斜率。太低會糊，太高會把濃淡壓平。 */
@@ -86,6 +90,9 @@ export interface InkTuning {
   /** 缺塊。欄位意義同 ChipTuning。 */
   voidFrequency: number
   voidThreshold: number
+  /** 圓角與積墨。欄位意義同 ChipTuning。 */
+  round: BleedKernel
+  roundThreshold: number
   /** 墨暈的核心大小：false 不暈、3 暈一像素、5 暈兩像素。見 bleedFilter。 */
   bleed: BleedKernel
   contrast: number
@@ -113,18 +120,21 @@ export interface FilterTuning {
 const SMALL: ChipSpec = {
   grainFrequency: 1.1, displace: 0.55, dilate: 0, chipFrequency: 1.7, chipAmount: 1 / 7,
   voidFrequency: 0.35, voidThreshold: 0.66, voidHardness: 40, voidOctaves: 3, voidSeed: 71,
+  round: 3, roundThreshold: 0.42,
   bleed: 3, contrast: 2.7, threshold: -0.1,
   grainOctaves: 2, chipOctaves: 3, seed: 4, chipSeed: 31, margin: 14,
 }
 const TEXT: ChipSpec = {
   grainFrequency: 0.88, displace: 1.1, dilate: 0, chipFrequency: 1.05, chipAmount: 1 / 7,
   voidFrequency: 0.35, voidThreshold: 0.66, voidHardness: 40, voidOctaves: 3, voidSeed: 71,
+  round: 3, roundThreshold: 0.42,
   bleed: 3, contrast: 3.2, threshold: -0.12,
   grainOctaves: 3, chipOctaves: 4, seed: 9, chipSeed: 27, margin: 16,
 }
 const HEADING: ChipSpec = {
   grainFrequency: 0.6, displace: 1.5, dilate: 0.2, chipFrequency: 0.5, chipAmount: 0.25,
   voidFrequency: 0.35, voidThreshold: 0.72, voidHardness: 40, voidOctaves: 3, voidSeed: 71,
+  round: 3 as BleedKernel, roundThreshold: 0.42,
   bleed: false as BleedKernel, contrast: 3.3, threshold: -0.07,
   grainOctaves: 3, chipOctaves: 4, seed: 13, chipSeed: 19, margin: 22,
 }
@@ -132,6 +142,7 @@ const LARGE: InkSpec = {
   grainFrequency: 0.34, displace: 1.6, inkFrequency: 0.055, inkFloor: 0.52,
   pinFrequency: 0.55, pinAmount: 1 / 12,
   voidFrequency: 0.35, voidThreshold: 0.72, voidHardness: 40, voidOctaves: 3, voidSeed: 71,
+  round: false as BleedKernel, roundThreshold: 0.42,
   bleed: false as BleedKernel, contrast: 1.25, threshold: -0.03,
   grainOctaves: 3, inkOctaves: 3, pinOctaves: 2, seed: 7, inkSeed: 23, pinSeed: 47, margin: 12,
 }
@@ -198,15 +209,39 @@ const bleedFilter = (input: string, bleed: BleedKernel) => {
   return `  <feConvolveMatrix in="${input}" order="${bleed}" kernelMatrix="${k.matrix}" divisor="${k.divisor}" edgeMode="none" result="b"/>\n`
 }
 
+/**
+ * 圓角與積墨。鉛字的字面是銳利的金屬，但印出來不是 —— 起收筆沒有尖角，
+ * 而橫筆起頭那類筆畫交會處會看得到積墨。這兩件事其實是同一個運算：
+ * 模糊之後在中值附近砍門檻。凸角周圍的墨少，模糊後掉到門檻下就被削圓；
+ * 凹角周圍的墨多，模糊後高過門檻就被填起來。
+ *
+ * 門檻 .5 大致保持面積（純圓角），往下走就偏積墨。排在整條鏈路最前面：
+ * 墨轉印的當下字形就已經圓了，之後才被紙面推歪、才被磨損咬掉。
+ *
+ * 圓的半徑是絕對長度（核心大小決定），所以字級愈小佔比愈大。-x 那支預設關掉：
+ * 初號 42pt 上的一像素看不出來，只是白花取樣。
+ */
+const roundFilter = (t: { round: BleedKernel; roundThreshold: number }, out: string) => {
+  if (!t.round) return { markup: '', out: 'SourceGraphic' }
+  const k = KERNELS[t.round]
+  const K = 60
+  return {
+    markup: `  <feConvolveMatrix in="SourceGraphic" order="${t.round}" kernelMatrix="${k.matrix}" divisor="${k.divisor}" edgeMode="none" result="rb"/>
+  <feComponentTransfer in="rb" result="${out}"><feFuncA type="linear" slope="${K}" intercept="${+(-K * t.roundThreshold).toFixed(2)}"/></feComponentTransfer>\n`,
+    out,
+  }
+}
+
 const chipFilter = (id: string, t: ChipSpec, strength: number) => {
   const displace = t.displace * strength
   const dilate = t.dilate * strength
   const size = 100 + t.margin * 2
   const gap = voidPass(t, 'chipped', strength)
+  const shaped = roundFilter(t, 'shaped')
   return `
 <filter id="${id}" x="-${t.margin}%" y="-${t.margin}%" width="${size}%" height="${size}%" color-interpolation-filters="sRGB">
-  <feTurbulence type="fractalNoise" baseFrequency="${t.grainFrequency}" numOctaves="${t.grainOctaves}" seed="${t.seed}" result="fib"/>
-  <feDisplacementMap in="SourceGraphic" in2="fib" scale="${+displace.toFixed(3)}" xChannelSelector="R" yChannelSelector="G" result="rough"/>
+${shaped.markup}  <feTurbulence type="fractalNoise" baseFrequency="${t.grainFrequency}" numOctaves="${t.grainOctaves}" seed="${t.seed}" result="fib"/>
+  <feDisplacementMap in="${shaped.out}" in2="fib" scale="${+displace.toFixed(3)}" xChannelSelector="R" yChannelSelector="G" result="rough"/>
 ${dilate > 0 ? `  <feMorphology in="rough" operator="dilate" radius="${+dilate.toFixed(3)}" result="gain"/>\n` : ''}  <feTurbulence type="fractalNoise" baseFrequency="${t.chipFrequency}" numOctaves="${t.chipOctaves}" seed="${t.chipSeed}" result="mot"/>
   <feColorMatrix in="mot" type="luminanceToAlpha" result="motl"/>
   <feComponentTransfer in="motl" result="chip"><feFuncA type="discrete" tableValues="${discreteTable(clamp01(t.chipAmount * strength))}"/></feComponentTransfer>
@@ -220,10 +255,11 @@ const inkFilter = (id: string, t: InkSpec, strength: number) => {
   // strength 0 = 完全均勻；strength 2 = 淡處再淡一倍。
   const floor = clamp01(1 - (1 - t.inkFloor) * strength)
   const gap = voidPass(t, 'chipped', strength)
+  const shaped = roundFilter(t, 'shaped')
   return `
 <filter id="${id}" x="-${t.margin}%" y="-${t.margin}%" width="${size}%" height="${size}%" color-interpolation-filters="sRGB">
-  <feTurbulence type="fractalNoise" baseFrequency="${t.grainFrequency}" numOctaves="${t.grainOctaves}" seed="${t.seed}" result="fib"/>
-  <feDisplacementMap in="SourceGraphic" in2="fib" scale="${+(t.displace * strength).toFixed(3)}" xChannelSelector="R" yChannelSelector="G" result="rough"/>
+${shaped.markup}  <feTurbulence type="fractalNoise" baseFrequency="${t.grainFrequency}" numOctaves="${t.grainOctaves}" seed="${t.seed}" result="fib"/>
+  <feDisplacementMap in="${shaped.out}" in2="fib" scale="${+(t.displace * strength).toFixed(3)}" xChannelSelector="R" yChannelSelector="G" result="rough"/>
   <feTurbulence type="fractalNoise" baseFrequency="${t.inkFrequency}" numOctaves="${t.inkOctaves}" seed="${t.inkSeed}" result="ink"/>
   <feColorMatrix in="ink" type="luminanceToAlpha" result="inkl"/>
   <feComponentTransfer in="inkl" result="inkmask"><feFuncA type="table" tableValues="${inkTable(floor)}"/></feComponentTransfer>

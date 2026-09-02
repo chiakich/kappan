@@ -1,4 +1,4 @@
-import { FILTER_DEFAULTS, type ChipTuning, type FilterTuning, type InkTuning } from './filters'
+import { FILTER_DEFAULTS, type BleedKernel, type ChipTuning, type FilterTuning, type InkTuning } from './filters'
 
 /**
  * 用印刷的成因當參數，而不是用濾鏡的參數。
@@ -34,7 +34,11 @@ const starveOf = (p: Press) =>
   (1 - p.ink) * 0.5 + (1 - p.pressure) * 0.4 + (p.paper - 1) * 0.25 + Math.max(0, p.wear - 1) * 0.5
 
 /** 四級共通的部分。錨點都是 d 的倍數，所以每一級各自成立。 */
-const common = (p: Press, d: { displace: number; voidThreshold: number; contrast: number; threshold: number }) => ({
+const common = (p: Press, d: { displace: number; voidThreshold: number; contrast: number; threshold: number; round: BleedKernel; roundThreshold: number }) => ({
+  // 圓角是印刷這個動作本身造成的，跟墨量無關，所以核心不動。但積墨的程度會 ——
+  // 墨愈多，交會處填得愈滿，門檻就愈低。
+  round: d.round,
+  roundThreshold: d.round ? clamp(ramp(p.ink, d.roundThreshold + 0.1, d.roundThreshold, d.roundThreshold - 0.12), 0.2, 0.6) : d.roundThreshold,
   // 紙愈粗，纖維把筆畫推得愈歪；壓力愈大，紙被壓平，推歪反而變少。
   displace: clamp(d.displace * ramp(p.paper, 0.4, 1, 1.6) * ramp(p.pressure, 1.5, 1, 0.8), 0, 4),
   voidThreshold: clamp(d.voidThreshold - starveOf(p) * 0.28, 0.35, 1),

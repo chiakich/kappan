@@ -2,8 +2,10 @@
 <svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute">
 
 <filter id="lp-s" x="-14%" y="-14%" width="128%" height="128%" color-interpolation-filters="sRGB">
+  <feConvolveMatrix in="SourceGraphic" order="3" kernelMatrix="1 2 1 2 4 2 1 2 1" divisor="16" edgeMode="none" result="rb"/>
+  <feComponentTransfer in="rb" result="shaped"><feFuncA type="linear" slope="60" intercept="-25.2"/></feComponentTransfer>
   <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" seed="4" result="fib"/>
-  <feDisplacementMap in="SourceGraphic" in2="fib" scale="0.55" xChannelSelector="R" yChannelSelector="G" result="rough"/>
+  <feDisplacementMap in="shaped" in2="fib" scale="0.55" xChannelSelector="R" yChannelSelector="G" result="rough"/>
   <feTurbulence type="fractalNoise" baseFrequency="1.7" numOctaves="3" seed="31" result="mot"/>
   <feColorMatrix in="mot" type="luminanceToAlpha" result="motl"/>
   <feComponentTransfer in="motl" result="chip"><feFuncA type="discrete" tableValues="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1"/></feComponentTransfer>
@@ -17,8 +19,10 @@
 </filter>
 
 <filter id="lp-t" x="-16%" y="-16%" width="132%" height="132%" color-interpolation-filters="sRGB">
+  <feConvolveMatrix in="SourceGraphic" order="3" kernelMatrix="1 2 1 2 4 2 1 2 1" divisor="16" edgeMode="none" result="rb"/>
+  <feComponentTransfer in="rb" result="shaped"><feFuncA type="linear" slope="60" intercept="-25.2"/></feComponentTransfer>
   <feTurbulence type="fractalNoise" baseFrequency="0.88" numOctaves="3" seed="9" result="fib"/>
-  <feDisplacementMap in="SourceGraphic" in2="fib" scale="1.1" xChannelSelector="R" yChannelSelector="G" result="rough"/>
+  <feDisplacementMap in="shaped" in2="fib" scale="1.1" xChannelSelector="R" yChannelSelector="G" result="rough"/>
   <feTurbulence type="fractalNoise" baseFrequency="1.05" numOctaves="4" seed="27" result="mot"/>
   <feColorMatrix in="mot" type="luminanceToAlpha" result="motl"/>
   <feComponentTransfer in="motl" result="chip"><feFuncA type="discrete" tableValues="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1"/></feComponentTransfer>
@@ -32,8 +36,10 @@
 </filter>
 
 <filter id="lp-d" x="-22%" y="-22%" width="144%" height="144%" color-interpolation-filters="sRGB">
+  <feConvolveMatrix in="SourceGraphic" order="3" kernelMatrix="1 2 1 2 4 2 1 2 1" divisor="16" edgeMode="none" result="rb"/>
+  <feComponentTransfer in="rb" result="shaped"><feFuncA type="linear" slope="60" intercept="-25.2"/></feComponentTransfer>
   <feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="3" seed="13" result="fib"/>
-  <feDisplacementMap in="SourceGraphic" in2="fib" scale="1.5" xChannelSelector="R" yChannelSelector="G" result="rough"/>
+  <feDisplacementMap in="shaped" in2="fib" scale="1.5" xChannelSelector="R" yChannelSelector="G" result="rough"/>
   <feMorphology in="rough" operator="dilate" radius="0.2" result="gain"/>
   <feTurbulence type="fractalNoise" baseFrequency="0.5" numOctaves="4" seed="19" result="mot"/>
   <feColorMatrix in="mot" type="luminanceToAlpha" result="motl"/>
@@ -65,8 +71,10 @@
 </filter>
 
 <filter id="lp-clean-s" x="-14%" y="-14%" width="128%" height="128%" color-interpolation-filters="sRGB">
+  <feConvolveMatrix in="SourceGraphic" order="3" kernelMatrix="1 2 1 2 4 2 1 2 1" divisor="16" edgeMode="none" result="rb"/>
+  <feComponentTransfer in="rb" result="shaped"><feFuncA type="linear" slope="60" intercept="-25.2"/></feComponentTransfer>
   <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" seed="4" result="fib"/>
-  <feDisplacementMap in="SourceGraphic" in2="fib" scale="0.193" xChannelSelector="R" yChannelSelector="G" result="rough"/>
+  <feDisplacementMap in="shaped" in2="fib" scale="0.193" xChannelSelector="R" yChannelSelector="G" result="rough"/>
   <feTurbulence type="fractalNoise" baseFrequency="1.7" numOctaves="3" seed="31" result="mot"/>
   <feColorMatrix in="mot" type="luminanceToAlpha" result="motl"/>
   <feComponentTransfer in="motl" result="chip"><feFuncA type="discrete" tableValues="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1"/></feComponentTransfer>
@@ -80,8 +88,10 @@
 </filter>
 
 <filter id="lp-clean-t" x="-16%" y="-16%" width="132%" height="132%" color-interpolation-filters="sRGB">
+  <feConvolveMatrix in="SourceGraphic" order="3" kernelMatrix="1 2 1 2 4 2 1 2 1" divisor="16" edgeMode="none" result="rb"/>
+  <feComponentTransfer in="rb" result="shaped"><feFuncA type="linear" slope="60" intercept="-25.2"/></feComponentTransfer>
   <feTurbulence type="fractalNoise" baseFrequency="0.88" numOctaves="3" seed="9" result="fib"/>
-  <feDisplacementMap in="SourceGraphic" in2="fib" scale="0.385" xChannelSelector="R" yChannelSelector="G" result="rough"/>
+  <feDisplacementMap in="shaped" in2="fib" scale="0.385" xChannelSelector="R" yChannelSelector="G" result="rough"/>
   <feTurbulence type="fractalNoise" baseFrequency="1.05" numOctaves="4" seed="27" result="mot"/>
   <feColorMatrix in="mot" type="luminanceToAlpha" result="motl"/>
   <feComponentTransfer in="motl" result="chip"><feFuncA type="discrete" tableValues="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1"/></feComponentTransfer>
@@ -95,8 +105,10 @@
 </filter>
 
 <filter id="lp-clean-d" x="-22%" y="-22%" width="144%" height="144%" color-interpolation-filters="sRGB">
+  <feConvolveMatrix in="SourceGraphic" order="3" kernelMatrix="1 2 1 2 4 2 1 2 1" divisor="16" edgeMode="none" result="rb"/>
+  <feComponentTransfer in="rb" result="shaped"><feFuncA type="linear" slope="60" intercept="-25.2"/></feComponentTransfer>
   <feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="3" seed="13" result="fib"/>
-  <feDisplacementMap in="SourceGraphic" in2="fib" scale="0.525" xChannelSelector="R" yChannelSelector="G" result="rough"/>
+  <feDisplacementMap in="shaped" in2="fib" scale="0.525" xChannelSelector="R" yChannelSelector="G" result="rough"/>
   <feMorphology in="rough" operator="dilate" radius="0.07" result="gain"/>
   <feTurbulence type="fractalNoise" baseFrequency="0.5" numOctaves="4" seed="19" result="mot"/>
   <feColorMatrix in="mot" type="luminanceToAlpha" result="motl"/>
@@ -128,8 +140,10 @@
 </filter>
 
 <filter id="lp-inky-s" x="-14%" y="-14%" width="128%" height="128%" color-interpolation-filters="sRGB">
+  <feConvolveMatrix in="SourceGraphic" order="3" kernelMatrix="1 2 1 2 4 2 1 2 1" divisor="16" edgeMode="none" result="rb"/>
+  <feComponentTransfer in="rb" result="shaped"><feFuncA type="linear" slope="60" intercept="-25.2"/></feComponentTransfer>
   <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" seed="4" result="fib"/>
-  <feDisplacementMap in="SourceGraphic" in2="fib" scale="0.55" xChannelSelector="R" yChannelSelector="G" result="rough"/>
+  <feDisplacementMap in="shaped" in2="fib" scale="0.55" xChannelSelector="R" yChannelSelector="G" result="rough"/>
   <feMorphology in="rough" operator="dilate" radius="0.2" result="gain"/>
   <feTurbulence type="fractalNoise" baseFrequency="1.7" numOctaves="3" seed="31" result="mot"/>
   <feColorMatrix in="mot" type="luminanceToAlpha" result="motl"/>
@@ -144,8 +158,10 @@
 </filter>
 
 <filter id="lp-inky-t" x="-16%" y="-16%" width="132%" height="132%" color-interpolation-filters="sRGB">
+  <feConvolveMatrix in="SourceGraphic" order="3" kernelMatrix="1 2 1 2 4 2 1 2 1" divisor="16" edgeMode="none" result="rb"/>
+  <feComponentTransfer in="rb" result="shaped"><feFuncA type="linear" slope="60" intercept="-25.2"/></feComponentTransfer>
   <feTurbulence type="fractalNoise" baseFrequency="0.88" numOctaves="3" seed="9" result="fib"/>
-  <feDisplacementMap in="SourceGraphic" in2="fib" scale="1.1" xChannelSelector="R" yChannelSelector="G" result="rough"/>
+  <feDisplacementMap in="shaped" in2="fib" scale="1.1" xChannelSelector="R" yChannelSelector="G" result="rough"/>
   <feMorphology in="rough" operator="dilate" radius="0.26" result="gain"/>
   <feTurbulence type="fractalNoise" baseFrequency="1.05" numOctaves="4" seed="27" result="mot"/>
   <feColorMatrix in="mot" type="luminanceToAlpha" result="motl"/>
@@ -160,8 +176,10 @@
 </filter>
 
 <filter id="lp-inky-d" x="-22%" y="-22%" width="144%" height="144%" color-interpolation-filters="sRGB">
+  <feConvolveMatrix in="SourceGraphic" order="3" kernelMatrix="1 2 1 2 4 2 1 2 1" divisor="16" edgeMode="none" result="rb"/>
+  <feComponentTransfer in="rb" result="shaped"><feFuncA type="linear" slope="60" intercept="-25.2"/></feComponentTransfer>
   <feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="3" seed="13" result="fib"/>
-  <feDisplacementMap in="SourceGraphic" in2="fib" scale="1.5" xChannelSelector="R" yChannelSelector="G" result="rough"/>
+  <feDisplacementMap in="shaped" in2="fib" scale="1.5" xChannelSelector="R" yChannelSelector="G" result="rough"/>
   <feMorphology in="rough" operator="dilate" radius="0.45" result="gain"/>
   <feTurbulence type="fractalNoise" baseFrequency="0.5" numOctaves="4" seed="19" result="mot"/>
   <feColorMatrix in="mot" type="luminanceToAlpha" result="motl"/>
