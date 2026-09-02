@@ -30,6 +30,8 @@ interface Internals {
   grainOctaves: number
   voidOctaves: number
   voidHardness: number
+  /** 邊緣帶的內部門檻。.8 剛好切出最外面那一圈，調它只會讓帶變胖或整個消失。 */
+  edgeThreshold: number
   seed: number
   voidSeed: number
   /** 濾鏡區域要留多少邊，位移大就要留多一點。 */
@@ -60,6 +62,13 @@ export interface ChipTuning {
   chipFrequency: number
   /** 缺角佔的比例，0~1。0 為完全不缺。 */
   chipAmount: number
+  /**
+   * 把缺角限制在筆畫邊緣多寬的一圈內：false 不限制、3 一像素、5 兩像素。
+   *
+   * 不限制的話噪點會從筆畫中央挖出洞來，那看起來是墨沾不勻，不是鉛字磨損 ——
+   * 金屬的字面是一塊平頂台地，磨損攻擊的是它的邊緣與高度，不會從中間蛀穿。
+   */
+  chipEdge: BleedKernel
   /** 缺塊的尺度。比 chipFrequency 低一個數量級，洞才大得到能咬斷筆畫。 */
   voidFrequency: number
   /** 缺塊的門檻，0~1。愈高洞愈稀疏；1 為完全不缺。見 voidPass。 */
@@ -74,6 +83,13 @@ export interface ChipTuning {
   contrast: number
   /** 拉硬時的偏移，負值等於把淡的部分吃掉。 */
   threshold: number
+  /**
+   * 最後整體的墨量，0~1。1 是印飽，愈低愈灰。
+   *
+   * 壓力不足、字面磨低於字身高度，墨都轉印不完全 —— 那先表現成整體發灰，
+   * 而不是形狀缺一塊。這道是純粹的 per-pixel alpha 縮放，任何字級都精確。
+   */
+  fade: number
 }
 
 /** 調密度式濾鏡（-x）的參數。 */
@@ -87,6 +103,8 @@ export interface InkTuning {
   /** 細砂眼佔的比例，0~1。 */
   pinFrequency: number
   pinAmount: number
+  /** 砂眼限制在邊緣多寬的一圈內。欄位意義同 ChipTuning。 */
+  chipEdge: BleedKernel
   /** 缺塊。欄位意義同 ChipTuning。 */
   voidFrequency: number
   voidThreshold: number
@@ -97,6 +115,8 @@ export interface InkTuning {
   bleed: BleedKernel
   contrast: number
   threshold: number
+  /** 整體墨量。欄位意義同 ChipTuning。 */
+  fade: number
 }
 
 export interface FilterTuning {
@@ -121,30 +141,30 @@ const SMALL: ChipSpec = {
   grainFrequency: 1.1, displace: 0.55, dilate: 0, chipFrequency: 1.7, chipAmount: 1 / 7,
   voidFrequency: 0.35, voidThreshold: 0.66, voidHardness: 40, voidOctaves: 3, voidSeed: 71,
   round: false as BleedKernel, roundThreshold: 0.42,
-  bleed: 3, contrast: 2.7, threshold: -0.1,
-  grainOctaves: 2, chipOctaves: 3, seed: 4, chipSeed: 31, margin: 14,
+  chipEdge: 3, bleed: 3, contrast: 2.7, threshold: -0.1, fade: 1,
+  grainOctaves: 2, chipOctaves: 3, seed: 4, chipSeed: 31, margin: 14, edgeThreshold: 0.8,
 }
 const TEXT: ChipSpec = {
   grainFrequency: 0.88, displace: 1.1, dilate: 0, chipFrequency: 1.05, chipAmount: 1 / 7,
   voidFrequency: 0.35, voidThreshold: 0.66, voidHardness: 40, voidOctaves: 3, voidSeed: 71,
   round: false as BleedKernel, roundThreshold: 0.42,
-  bleed: 3, contrast: 3.2, threshold: -0.12,
-  grainOctaves: 3, chipOctaves: 4, seed: 9, chipSeed: 27, margin: 16,
+  chipEdge: 3, bleed: 3, contrast: 3.2, threshold: -0.12, fade: 1,
+  grainOctaves: 3, chipOctaves: 4, seed: 9, chipSeed: 27, margin: 16, edgeThreshold: 0.8,
 }
 const HEADING: ChipSpec = {
   grainFrequency: 0.6, displace: 1.5, dilate: 0.2, chipFrequency: 0.5, chipAmount: 0.25,
   voidFrequency: 0.35, voidThreshold: 0.72, voidHardness: 40, voidOctaves: 3, voidSeed: 71,
   round: 3 as BleedKernel, roundThreshold: 0.42,
-  bleed: false as BleedKernel, contrast: 3.3, threshold: -0.07,
-  grainOctaves: 3, chipOctaves: 4, seed: 13, chipSeed: 19, margin: 22,
+  chipEdge: 5, bleed: false as BleedKernel, contrast: 3.3, threshold: -0.07, fade: 1,
+  grainOctaves: 3, chipOctaves: 4, seed: 13, chipSeed: 19, margin: 22, edgeThreshold: 0.8,
 }
 const LARGE: InkSpec = {
   grainFrequency: 0.34, displace: 1.6, inkFrequency: 0.055, inkFloor: 0.52,
   pinFrequency: 0.55, pinAmount: 1 / 12,
   voidFrequency: 0.35, voidThreshold: 0.72, voidHardness: 40, voidOctaves: 3, voidSeed: 71,
   round: false as BleedKernel, roundThreshold: 0.42,
-  bleed: false as BleedKernel, contrast: 1.25, threshold: -0.03,
-  grainOctaves: 3, inkOctaves: 3, pinOctaves: 2, seed: 7, inkSeed: 23, pinSeed: 47, margin: 12,
+  chipEdge: 5, bleed: false as BleedKernel, contrast: 1.25, threshold: -0.03, fade: 1,
+  grainOctaves: 3, inkOctaves: 3, pinOctaves: 2, seed: 7, inkSeed: 23, pinSeed: 47, margin: 12, edgeThreshold: 0.8,
 }
 
 // 48 段夠細，1/7、1/4、1/12 都落得回原本的門檻上。1 一律放在最亮那端。
@@ -172,7 +192,17 @@ const clamp01 = (n: number) => Math.max(0, Math.min(1, n))
  * 那一小段 —— 參數從 1/16 調到 1/140 看似動了九倍，實際只移動 0.013，畫面幾乎不變。
  * 所以這裡的 threshold 就是噪點上的絕對位置，斜率只負責把邊緣切硬。
  */
-const voidPass = (t: { voidFrequency: number; voidThreshold: number; voidHardness: number; voidOctaves: number; voidSeed: number }, input: string, strength: number) => {
+const voidPass = (
+  t: { voidFrequency: number; voidThreshold: number; voidHardness: number; voidOctaves: number; voidSeed: number },
+  input: string,
+  strength: number,
+  /**
+   * 「內部」遮罩。給了就把洞限制在有內部的地方 —— 一像素寬的髮絲筆畫算不出內部，
+   * 所以永遠不會被打斷。物理上也對：鹽粒感是墨沒填進紙的凹谷，那要有面積才顯得出來；
+   * 髮絲要嘛印出來要嘛整條不見，不會中間破一個洞。
+   */
+  interior?: string
+) => {
   // 跟其他參數一致：strength 0 等於整道關掉，2 等於破得更兇。
   const threshold = 1 - (1 - t.voidThreshold) * strength
   if (threshold >= 1) return { markup: '', out: input }
@@ -181,7 +211,7 @@ const voidPass = (t: { voidFrequency: number; voidThreshold: number; voidHardnes
     markup: `  <feTurbulence type="fractalNoise" baseFrequency="${t.voidFrequency}" numOctaves="${t.voidOctaves}" seed="${t.voidSeed}" result="vn"/>
   <feColorMatrix in="vn" type="luminanceToAlpha" result="vnl"/>
   <feComponentTransfer in="vnl" result="vm"><feFuncA type="linear" slope="${k}" intercept="${+(-k * threshold).toFixed(3)}"/></feComponentTransfer>
-  <feComposite in="${input}" in2="vm" operator="out" result="voided"/>\n`,
+  ${interior ? `<feComposite in="vm" in2="${interior}" operator="in" result="vmi"/>\n  ` : ''}<feComposite in="${input}" in2="${interior ? 'vmi' : 'vm'}" operator="out" result="voided"/>\n`,
     out: 'voided',
   }
 }
@@ -218,10 +248,16 @@ const bleedFilter = (input: string, bleed: BleedKernel) => {
  * 門檻 .5 大致保持面積（純圓角），往下走就偏積墨。排在整條鏈路最前面：
  * 墨轉印的當下字形就已經圓了，之後才被紙面推歪、才被磨損咬掉。
  *
- * 圓的半徑是絕對長度（核心大小決定），所以字級愈小佔比愈大 —— 這決定了誰能開。
- * -s 與 -t 關掉：明體的橫畫在五號、六號上是次像素的，3×3 卷積後峰值只剩 .25，
- * 低於門檻 .42，整條橫畫在進入後面所有濾鏡之前就被切掉了。-x 一樣關掉，
- * 理由相反：初號 42pt 上的一像素看不出來。
+ * 圓的半徑是絕對長度（核心大小決定），所以字級愈小佔比愈大 —— 這一點決定了誰能開。
+ *
+ * -s 與 -t 預設關掉。明體的橫畫在五號、六號上是次像素的：假設反鋸齒後是 0.6 的一列
+ * 加上下各 0.2，3×3 卷積後峰值只剩 (4×.6 + 4×.2 + 4×.2)/16 = 0.25，低於門檻 .42，
+ * 整條橫畫在進入後面所有濾鏡之前就被切掉了。看起來像缺損變多，其實是先被削掉一截，
+ * 剩下的殘骸再去吃缺角與缺塊。實心一像素的筆畫則是 (2+4+2)/16 = .5，過得了門檻 ——
+ * 所以大字沒事，在 probe 上調出來的 .42 換到內文級數就是災難。
+ *
+ * 要在內文級數也吃圓角的話，門檻得壓到 .2 上下才留得住次像素的橫畫，但那時整體會胖
+ * 一大圈，就不叫圓角叫積墨了。-x 一樣關掉，理由相反：初號 42pt 上的一像素看不出來。
  */
 const roundFilter = (t: { round: BleedKernel; roundThreshold: number }, out: string) => {
   if (!t.round) return { markup: '', out: 'SourceGraphic' }
@@ -234,12 +270,45 @@ const roundFilter = (t: { round: BleedKernel; roundThreshold: number }, out: str
   }
 }
 
+/**
+ * 邊緣帶。把一個遮罩限制在筆畫最外面那一圈之內。
+ *
+ * 做法跟 roundFilter 同源：固定核心卷積一次，再用高門檻切出「內部」——
+ * 鄰域幾乎全是墨的才算內部。原圖減掉內部，剩下的就是一圈邊緣。
+ * 直邊上算得出來剛好是最外面一像素（3×3 的話中心值 .75 < .8 被切掉，
+ * 往內一格是 1 留下來），5×5 則是兩像素。
+ *
+ * 為什麼要這一道：噪點直接對整個字身做 operator="out" 的話，洞會從筆畫中央
+ * 冒出來，那是墨沾不勻的樣子。金屬的字面是一塊平頂台地，磨損攻擊的是它的
+ * 邊緣與高度 —— 崩角發生在邊上，不會從中間蛀穿。
+ */
+const edgeBand = (t: { chipEdge: BleedKernel; edgeThreshold: number }, input: string) => {
+  if (!t.chipEdge) return { markup: '', out: '' }
+  const k = KERNELS[t.chipEdge]
+  const K = 60
+  return {
+    markup: `  <feConvolveMatrix in="${input}" order="${t.chipEdge}" kernelMatrix="${k.matrix}" divisor="${k.divisor}" edgeMode="none" result="eb"/>
+  <feComponentTransfer in="eb" result="einner"><feFuncA type="linear" slope="${K}" intercept="${+(-K * t.edgeThreshold).toFixed(2)}"/></feComponentTransfer>
+  <feComposite in="${input}" in2="einner" operator="out" result="eband"/>\n`,
+    out: 'eband',
+  }
+}
+
+/** 整體墨量。壓力不足或字面磨低都是墨轉印不完全，先發灰才缺形狀。 */
+const fadePass = (fade: number, input: string) =>
+  fade >= 1
+    ? ''
+    : `  <feComponentTransfer in="${input}"><feFuncA type="linear" slope="${+fade.toFixed(3)}"/></feComponentTransfer>\n`
+
 const chipFilter = (id: string, t: ChipSpec, strength: number) => {
   const displace = t.displace * strength
   const dilate = t.dilate * strength
   const size = 100 + t.margin * 2
-  const gap = voidPass(t, 'chipped', strength)
   const shaped = roundFilter(t, 'shaped')
+  const base = dilate > 0 ? 'gain' : 'rough'
+  const band = edgeBand(t, base)
+  // einner 由 edgeBand 產生，順序上排在 gap 前面，所以拿得到。
+  const gap = voidPass(t, 'chipped', strength, band.out ? 'einner' : undefined)
   return `
 <filter id="${id}" x="-${t.margin}%" y="-${t.margin}%" width="${size}%" height="${size}%" color-interpolation-filters="sRGB">
 ${shaped.markup}  <feTurbulence type="fractalNoise" baseFrequency="${t.grainFrequency}" numOctaves="${t.grainOctaves}" seed="${t.seed}" result="fib"/>
@@ -247,17 +316,20 @@ ${shaped.markup}  <feTurbulence type="fractalNoise" baseFrequency="${t.grainFreq
 ${dilate > 0 ? `  <feMorphology in="rough" operator="dilate" radius="${+dilate.toFixed(3)}" result="gain"/>\n` : ''}  <feTurbulence type="fractalNoise" baseFrequency="${t.chipFrequency}" numOctaves="${t.chipOctaves}" seed="${t.chipSeed}" result="mot"/>
   <feColorMatrix in="mot" type="luminanceToAlpha" result="motl"/>
   <feComponentTransfer in="motl" result="chip"><feFuncA type="discrete" tableValues="${discreteTable(clamp01(t.chipAmount * strength))}"/></feComponentTransfer>
-  <feComposite in="${dilate > 0 ? 'gain' : 'rough'}" in2="chip" operator="out" result="chipped"/>
-${gap.markup}${bleedFilter(gap.out, t.bleed)}  <feComponentTransfer in="${t.bleed ? 'b' : gap.out}"><feFuncA type="linear" slope="${t.contrast}" intercept="${t.threshold}"/></feComponentTransfer>
-</filter>`
+${band.markup}${band.out ? `  <feComposite in="chip" in2="${band.out}" operator="in" result="chipRim"/>\n` : ''}  <feComposite in="${base}" in2="${band.out ? 'chipRim' : 'chip'}" operator="out" result="chipped"/>
+${gap.markup}${bleedFilter(gap.out, t.bleed)}  <feComponentTransfer in="${t.bleed ? 'b' : gap.out}" result="hard"><feFuncA type="linear" slope="${t.contrast}" intercept="${t.threshold}"/></feComponentTransfer>
+${fadePass(t.fade, 'hard')}</filter>`
 }
 
 const inkFilter = (id: string, t: InkSpec, strength: number) => {
   const size = 100 + t.margin * 2
   // strength 0 = 完全均勻；strength 2 = 淡處再淡一倍。
   const floor = clamp01(1 - (1 - t.inkFloor) * strength)
-  const gap = voidPass(t, 'chipped', strength)
   const shaped = roundFilter(t, 'shaped')
+  // 砂眼也限在邊緣：新字的砂眼是鑄造缺陷（會在面上），但 wear 拉高時多出來的
+  // 是磨損，那發生在邊上。兩者共用一道遮罩，取磨損那個位置比較不會像髒點。
+  const band = edgeBand(t, 'uneven')
+  const gap = voidPass(t, 'chipped', strength, band.out ? 'einner' : undefined)
   return `
 <filter id="${id}" x="-${t.margin}%" y="-${t.margin}%" width="${size}%" height="${size}%" color-interpolation-filters="sRGB">
 ${shaped.markup}  <feTurbulence type="fractalNoise" baseFrequency="${t.grainFrequency}" numOctaves="${t.grainOctaves}" seed="${t.seed}" result="fib"/>
@@ -269,9 +341,9 @@ ${shaped.markup}  <feTurbulence type="fractalNoise" baseFrequency="${t.grainFreq
   <feTurbulence type="fractalNoise" baseFrequency="${t.pinFrequency}" numOctaves="${t.pinOctaves}" seed="${t.pinSeed}" result="pin"/>
   <feColorMatrix in="pin" type="luminanceToAlpha" result="pinl"/>
   <feComponentTransfer in="pinl" result="pinmask"><feFuncA type="discrete" tableValues="${discreteTable(clamp01(t.pinAmount * strength))}"/></feComponentTransfer>
-  <feComposite in="uneven" in2="pinmask" operator="out" result="chipped"/>
-${gap.markup}${bleedFilter(gap.out, t.bleed)}  <feComponentTransfer in="${t.bleed ? 'b' : gap.out}"><feFuncA type="linear" slope="${t.contrast}" intercept="${t.threshold}"/></feComponentTransfer>
-</filter>`
+${band.markup}${band.out ? `  <feComposite in="pinmask" in2="${band.out}" operator="in" result="pinRim"/>\n` : ''}  <feComposite in="uneven" in2="${band.out ? 'pinRim' : 'pinmask'}" operator="out" result="chipped"/>
+${gap.markup}${bleedFilter(gap.out, t.bleed)}  <feComponentTransfer in="${t.bleed ? 'b' : gap.out}" result="hard"><feFuncA type="linear" slope="${t.contrast}" intercept="${t.threshold}"/></feComponentTransfer>
+${fadePass(t.fade, 'hard')}</filter>`
 }
 
 /**
