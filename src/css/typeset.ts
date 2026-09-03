@@ -2,8 +2,8 @@ import type { ResolvedOptions } from '../options'
 
 /** 兩種字面：活字與西文。每種對應一支濾鏡與一組微陰影。 */
 const faces = `
-.lp .sg { font-family: var(--type); text-shadow: 0 0 .6px rgba(0, 0, 0, .6); }
-.lp .tp { font-family: var(--latin); text-shadow: .35px .3px 0 rgba(0, 0, 0, .2), 1.3px 1.2px 0 rgba(0, 0, 0, .1); }
+.lp .sg { font-family: var(--type); text-shadow: 0 0 .6px color-mix(in srgb, var(--ink) 60%, transparent); }
+.lp .tp { font-family: var(--latin); text-shadow: .35px .3px 0 color-mix(in srgb, var(--ink) 20%, transparent), 1.3px 1.2px 0 color-mix(in srgb, var(--ink) 10%, transparent); }
 .lp .lbl {
   font-family: var(--latin);
   font-size: 10px;
@@ -74,17 +74,17 @@ const jitterGeometry = `
  * 本來就與尺寸無關。
  */
 const jitterWeight = `
-.lp-ch:not(.cj):nth-child(4n+1) { color: rgba(0, 0, 0, calc(1 - .13 * var(--weight))); }
-.lp-ch:not(.cj):nth-child(7n+4) { color: rgba(0, 0, 0, calc(1 - .32 * var(--weight))); }
-.lp-ch:not(.cj):nth-child(11n+6) { color: rgba(0, 0, 0, calc(1 - .48 * var(--weight))); }
-.lp-ch:not(.cj):nth-child(29n+3) { color: rgba(0, 0, 0, calc(1 - .19 * var(--weight))); }
-.lp-ch:not(.cj):nth-child(5n+2) { text-shadow: calc(.64px * var(--weight)) 0 0 rgba(0, 0, 0, .82); }
-.lp-ch:not(.cj):nth-child(8n+5) { text-shadow: calc(.56px * var(--weight)) calc(.48px * var(--weight)) 0 rgba(0, 0, 0, .72); }
-.lp-ch:not(.cj):nth-child(13n+3) { text-shadow: calc(-.56px * var(--weight)) 0 0 rgba(0, 0, 0, .68), calc(.56px * var(--weight)) 0 0 rgba(0, 0, 0, .68); }
-.lp-ch.cj:nth-child(11n+6) { color: rgba(0, 0, 0, calc(1 - .16 * var(--weight))); }
-.lp-ch.cj:nth-child(17n+3) { color: rgba(0, 0, 0, calc(1 - .08 * var(--weight))); }
-.lp-ch.cj:nth-child(13n+8) { text-shadow: calc(.45px * var(--weight)) 0 0 #000, calc(-.45px * var(--weight)) 0 0 #000, 0 calc(.45px * var(--weight)) .3px #000; }
-.lp-ch.cj:nth-child(23n+11) { text-shadow: calc(.35px * var(--weight)) calc(.35px * var(--weight)) 0 #000; }
+.lp-ch:not(.cj):nth-child(4n+1) { color: color-mix(in srgb, var(--ink) calc(100% - 13% * var(--weight)), transparent); }
+.lp-ch:not(.cj):nth-child(7n+4) { color: color-mix(in srgb, var(--ink) calc(100% - 32% * var(--weight)), transparent); }
+.lp-ch:not(.cj):nth-child(11n+6) { color: color-mix(in srgb, var(--ink) calc(100% - 48% * var(--weight)), transparent); }
+.lp-ch:not(.cj):nth-child(29n+3) { color: color-mix(in srgb, var(--ink) calc(100% - 19% * var(--weight)), transparent); }
+.lp-ch:not(.cj):nth-child(5n+2) { text-shadow: calc(.64px * var(--weight)) 0 0 color-mix(in srgb, var(--ink) 82%, transparent); }
+.lp-ch:not(.cj):nth-child(8n+5) { text-shadow: calc(.56px * var(--weight)) calc(.48px * var(--weight)) 0 color-mix(in srgb, var(--ink) 72%, transparent); }
+.lp-ch:not(.cj):nth-child(13n+3) { text-shadow: calc(-.56px * var(--weight)) 0 0 color-mix(in srgb, var(--ink) 68%, transparent), calc(.56px * var(--weight)) 0 0 color-mix(in srgb, var(--ink) 68%, transparent); }
+.lp-ch.cj:nth-child(11n+6) { color: color-mix(in srgb, var(--ink) calc(100% - 16% * var(--weight)), transparent); }
+.lp-ch.cj:nth-child(17n+3) { color: color-mix(in srgb, var(--ink) calc(100% - 8% * var(--weight)), transparent); }
+.lp-ch.cj:nth-child(13n+8) { text-shadow: calc(.45px * var(--weight)) 0 0 var(--ink), calc(-.45px * var(--weight)) 0 0 var(--ink), 0 calc(.45px * var(--weight)) .3px var(--ink); }
+.lp-ch.cj:nth-child(23n+11) { text-shadow: calc(.35px * var(--weight)) calc(.35px * var(--weight)) 0 var(--ink); }
 `
 
 /** 兩組各自的關閉開關。放在最後才蓋得過上面的 nth-child。 */
