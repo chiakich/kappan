@@ -9,13 +9,13 @@ npm run build
 npm run demo      # http://localhost:4173/demo/
 ```
 
-## 最快的方式
+## 快速上手
 
 抓 [`dist/`](dist/) 裡的兩個檔案 `kappan.css` 與 `kappan-filters.svg` 貼上：
 
 ```html
 <link rel="stylesheet" href="kappan.css">
-<!-- kappan-filters.svg 的內容貼進 <body>，整頁一份 -->
+<!-- kappan-filters.svg 的內容貼進 <body>，整頁一份。不可存成.svg，會讀不到濾鏡 -->
 
 <div class="lp lp-paper">
   <p class="lp-sz-3">常世通信 第一號</p>
@@ -73,13 +73,13 @@ class 同時決定字級與該用哪支濾鏡。這兩件事本來就綁在一�
 letterpressCss({ filters: pressTuning({ ink: 1.6, paper: 2 }) })
 ```
 
-`pressTuning({ ink, pressure, paper, wear })` 四個都設 1 就是預設值。一個成因會同時牽動好幾道濾鏡 —— 墨上多了本來就同時讓筆畫變胖、少缺、邊緣更實。真的要逐項調的話 `FilterTuning` 開放了每一支的參數，`FILTER_DEFAULTS` 可以讀出預設值當基準。
+`pressTuning({ ink, pressure, paper, wear })` 四個都設 1 就是預設值。一個成因會同時牽動好幾道濾鏡，墨上多了會同時讓筆畫變胖、少缺、邊緣更實。真的要逐項調的話 `FilterTuning` 開放了每一支的參數，`FILTER_DEFAULTS` 可以讀出預設值當基準。
 
-## 四支濾鏡
+## 濾鏡差異
 
 `-s` 內文小字、`-t` 一般行文、`-d` 標題（多一道吃墨脹開）、`-x` 大字。
 
-前三支靠挖掉像素做缺角，在內文級數看起來是斑駁；但噪點的週期不跟著字級放大，放到 60px 以上就變成整塊筆畫被剪掉，字會散掉。所以 `-x` 改成調墨的密度 —— 低頻噪點乘進 alpha，筆畫結構完整保留，只是有的地方吃墨飽、有的地方虛，像印章蓋不勻。
+前三支靠挖掉像素做缺角，在內文級數看起來是斑駁；但噪點的週期不跟著字級放大，放到 60px 以上就變成整塊筆畫被剪掉，字會散掉。所以 `-x` 改成調墨的密度，低頻噪點乘進 alpha，筆畫結構完整保留，只是有的地方吃墨飽、有的地方虛，像印章蓋不勻。
 
 每一支都是五道：紙面推歪、砂眼（或濃淡場）、缺塊、墨暈（或脹開）、把 alpha 拉硬。
 
@@ -89,7 +89,7 @@ letterpressCss({ filters: pressTuning({ ink: 1.6, paper: 2 }) })
 - 字面 `.sg` 活字、`.tp` 西文、`.lbl` 小標籤、`.bar` 黑條（寬度吃 `--bar-w`）。
 - 排版 `.lp-v` 直排、`.lp-rtl` 右起橫排、`.lp-cell` 直排格內置中、`.lp-typed` 吃 `--pitch` 當行高、`.lp-ruled` 與 `.lp-ruled-h` 稿紙格線。格線畫在字行之間，方向與書寫方向相反。
 - 逐字 `.lp-ch`，由 `<Redacted>` 或 `redactedHtml()` 產生。連續的 `█` 會變成一根黑條。
-- 質感疊層 `.lp-fibre` `.lp-expose` `.lp-grain` `.lp-dirt` `.lp-spine` 只在需要各層獨立擺位時才用（例如質感要延伸到容器之外），它們是 `position:absolute; inset:0`，父層得自己 `position:relative`。裝訂陰影與髒污不在 `.lp-paper` 裡，那兩個是敘事道具不是紙的物理性質。
+- 質感疊層 `.lp-fibre` `.lp-expose` `.lp-grain` `.lp-dirt` `.lp-spine` 只在需要各層獨立擺位時才用（例如質感要延伸到容器之外），它們是 `position:absolute; inset:0`，父層得自己 `position:relative`。
 
 ## 幾個坑
 
