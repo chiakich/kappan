@@ -83,6 +83,12 @@ const inkEqOf = (p: Press) =>
 const rimOf = (p: Press) => clamp(Math.max(0, p.pressure - 1) * 0.25, 0, 0.25)
 
 /**
+ * 壓痕深度。也是只有壓過頭才有：kiss impression 剛好吻到紙，不留坑。
+ * 紙粗一點坑壁比較不俐落、影子也重一點；光滑的塗佈紙幾乎壓不出坑。
+ */
+const debossOf = (p: Press) => clamp(Math.max(0, p.pressure - 1) * ramp(p.paper, 0.4, 1, 1.3), 0, 1)
+
+/**
  * 四級共通的部分。錨點都是 d 的倍數，所以每一級各自成立。
  *
  * fill 是這一級對「墨太多」的敏感度。這是整套裡唯一一個反方向的尺度問題：
@@ -97,6 +103,7 @@ const common = (
     displace: number
     warp: number
     rim: number
+    deboss: number
     voidThreshold: number
     contrast: number
     threshold: number
@@ -125,6 +132,7 @@ const common = (
   // 比 displace 對紙的反應緩 —— 纖維推歪是紙的表面，起伏是紙的厚度，後者變化小。
   warp: clamp(d.warp * ramp(p.paper, 0.6, 1, 1.4) * ramp(p.pressure, 1.3, 1, 0.85), 0, 6),
   rim: rimOf(p),
+  deboss: debossOf(p),
   voidThreshold: clamp(d.voidThreshold - starveOf(p) * 0.28, 0.35, 1),
   // 吸墨的紙會讓邊緣滲開；墨上太多的話，再光滑的紙也擋不住。
   // 一律用 5：3 的暈圈只有 1px，拉硬還沒推到底就把它吃完了，再推也不會更胖。
