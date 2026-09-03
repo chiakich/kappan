@@ -1,6 +1,7 @@
 // 示範頁。kappan 本身沒有這些東西 —— 它只吐 CSS 與濾鏡，介面是使用端的事。
 import {
   mount,
+  filtersMarkup,
   redact,
   redactedHtml,
   pressTuning,
@@ -12,7 +13,8 @@ import {
 import { sheetSvg, rasterize, canvasBlob, withBackground, download } from './print.js'
 
 const $ = (id) => document.getElementById(id)
-const sheet = document.body
+// 調節鈕只動編輯區這一塊。整頁的紙、墨、濾鏡都是套件預設，動的是 #editor 身上的變數。
+const sheet = document.getElementById('editor')
 const editor = $('editor')
 
 const START_TEXT = '千秋印書館謹啟　承印中西書籍章程契據\n打一段字，調墨、調紙、調壓力，看它被印出來的樣子。'
@@ -70,8 +72,18 @@ $('presets').innerHTML = Object.keys(PRESETS)
   .join('')
 
 /* ── 濾鏡 ────────────────────────────────────────────────── */
-// 濾鏡是唯一需要重新產生 markup 的東西；顏色、紙紋、歪斜全都只是 CSS 變數。
-let dispose = null
+// 整頁掛一份預設濾鏡（id 前綴 lp）。可調的那份另外用前綴 ed 產生，只有編輯區把
+// --lp-* 指過去，所以拖成因滑桿時頁面其他地方一動也不動。
+mount()
+const EDITOR_PREFIX = 'ed'
+const editorFilters = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+editorFilters.setAttribute('width', '0')
+editorFilters.setAttribute('height', '0')
+editorFilters.setAttribute('aria-hidden', 'true')
+editorFilters.setAttribute('style', 'position:absolute')
+document.head.append(editorFilters)
+for (const t of ['s', 't', 'd', 'x']) editor.style.setProperty(`--lp-${t}`, `url(#${EDITOR_PREFIX}-${t})`)
+
 let textureTouched = false
 let raf = 0
 
@@ -80,8 +92,7 @@ const remount = () => {
   raf = requestAnimationFrame(() => {
     const press = readPress()
     const filters = pressTuning(press)
-    dispose?.()
-    dispose = mount({ filters })
+    editorFilters.innerHTML = filtersMarkup(EDITOR_PREFIX, filters)
     // 紙粗糙的話紙紋本身也該濃一點 —— 那是同一張紙。使用者拉過之後就以他的為準。
     if (!textureTouched) $('texture').value = pressTexture(press).toFixed(2)
     const t = filters.text
@@ -107,7 +118,7 @@ let family = ''
 let direction = 'h'
 
 const paint = () => {
-  editor.className = `sg lp-typed ${$('size').value}` + (direction === 'v' ? ' lp-v' : direction === 'rtl' ? ' lp-rtl' : '')
+  editor.className = `sg lp-typed lp-paper ${$('size').value}` + (direction === 'v' ? ' lp-v' : direction === 'rtl' ? ' lp-rtl' : '')
   editor.style.letterSpacing = `${$('tracking').value}em`
 
   const vars = {
@@ -121,7 +132,7 @@ const paint = () => {
     '--weight': $('jitter').value,
     '--pitch': `${$('pitch').value}em`,
   }
-  if (family) vars['--type'] = `'lp-punct', '${family}', 'Songti TC', serif`
+  vars['--type'] = family ? `'lp-punct', '${family}', 'Songti TC', serif` : ''
   for (const [k, v] of Object.entries(vars)) sheet.style.setProperty(k, v)
 
   for (const d of DIALS) {
@@ -267,7 +278,8 @@ const sheetSpec = (transparent) => {
     vars[k] = sheet.style.getPropertyValue(k) || getComputedStyle(sheet).getPropertyValue(k)
   return {
     text: plainText(),
-    className: editor.className,
+    // 紙紋在匯出時另外畫，不帶 .lp-paper 進去量。
+    className: editor.className.replace('lp-paper', ''),
     letterSpacing: editor.style.letterSpacing || '0em',
     vertical: direction === 'v',
     vars,
