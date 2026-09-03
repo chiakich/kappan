@@ -36,10 +36,16 @@ interface Internals {
   voidSeed: number
   /** 濾鏡區域要留多少邊，位移大就要留多一點。 */
   margin: number
+  /** 整體彎曲的噪點頻率。要比字身大得多才會是「彎」而不是「抖」。 */
+  warpFrequency: number
+  warpSeed: number
 }
 interface ChipInternals extends Internals {
   chipOctaves: number
   chipSeed: number
+  /** 墨暈圈自己的噪點頻率。介於纖維與彎曲之間，暈圈才會是一圈起伏而不是毛邊。 */
+  squashFrequency: number
+  squashSeed: number
 }
 interface InkInternals extends Internals {
   inkOctaves: number
@@ -56,8 +62,32 @@ export interface ChipTuning {
   grainFrequency: number
   /** 邊緣被紙面推開幾個像素。 */
   displace: number
+  /**
+   * 整條筆畫被推彎幾個像素，0 為不彎。
+   *
+   * displace 是纖維尺度的高頻抖動，波長只有幾個像素，在大字上看起來是毛邊。
+   * 鉛字沒坐平、紙面本身起伏，造成的是另一種尺度的變形：整條筆畫微微不直，
+   * 波長跟字身差不多。內文級數上這個尺度大過字本身所以看不見，大字才開。
+   */
+  warp: number
   /** 吃墨脹開的半徑，0 為不脹。 */
   dilate: number
+  /**
+   * 被擠出去的那圈墨，邊緣要比字面本身抖多少像素。只在 dilate > 0 時作用。
+   *
+   * 字面壓到紙的那塊是清楚的，被壓力擠到外圍的墨（squash）才是不規則的 ——
+   * 它順著纖維走，哪裡吸得多就往哪裡溢。所以脹開那圈單獨再位移一次，
+   * 再把原本的字身蓋回去：核心不動，只有暈圈在晃。
+   */
+  squash: number
+  /**
+   * 邊實中淡的程度，0~1。0 為不作用。
+   *
+   * 壓力把墨往外擠，筆畫中央的墨膜變薄、邊緣堆起來一圈 —— 印壓過重的字看起來
+   * 是「描了邊」的。這是印壓獨有的簽名，墨多不會這樣（墨多是整條均勻地胖）。
+   * 用 edgeBand 算出來的內部遮罩把中央的 alpha 壓下去，最外一圈保持實心。
+   */
+  rim: number
   /** 缺角的尺度。數字愈小，單個缺口愈大。 */
   chipFrequency: number
   /** 缺角佔的比例，0~1。0 為完全不缺。 */
@@ -96,6 +126,10 @@ export interface ChipTuning {
 export interface InkTuning {
   grainFrequency: number
   displace: number
+  /** 整條筆畫被推彎幾個像素。欄位意義同 ChipTuning。 */
+  warp: number
+  /** 邊實中淡的程度。欄位意義同 ChipTuning。 */
+  rim: number
   /** 濃淡斑塊的尺度。數字愈小，斑塊愈大。 */
   inkFrequency: number
   /** 最淡處還剩多少墨，0~1。設 1 就是完全均勻。 */
@@ -138,33 +172,37 @@ export interface FilterTuning {
 // 小字要墨暈才讀得出吃墨；大字的缺角與位移本來就看得見，再柔化只會把它糊掉。
 // 缺塊反過來：小字級破得重（門檻 .66），大字級較輕（.72）—— 見本比對出來的。
 const SMALL: ChipSpec = {
-  grainFrequency: 1.1, displace: 0.55, dilate: 0, chipFrequency: 1.7, chipAmount: 1 / 7,
+  grainFrequency: 1.1, displace: 0.55, warp: 0, dilate: 0, squash: 0.8, rim: 0, chipFrequency: 1.7, chipAmount: 1 / 7,
   voidFrequency: 0.35, voidThreshold: 0.66, voidHardness: 40, voidOctaves: 3, voidSeed: 71,
   round: false as BleedKernel, roundThreshold: 0.42,
   chipEdge: 3, bleed: 3, contrast: 2.7, threshold: -0.1, fade: 1,
   grainOctaves: 2, chipOctaves: 3, seed: 4, chipSeed: 31, margin: 14, edgeThreshold: 0.8,
+  warpFrequency: 0.03, warpSeed: 3, squashFrequency: 0.14, squashSeed: 37,
 }
 const TEXT: ChipSpec = {
-  grainFrequency: 0.88, displace: 1.1, dilate: 0, chipFrequency: 1.05, chipAmount: 1 / 7,
+  grainFrequency: 0.88, displace: 1.1, warp: 0, dilate: 0, squash: 1, rim: 0, chipFrequency: 1.05, chipAmount: 1 / 7,
   voidFrequency: 0.35, voidThreshold: 0.66, voidHardness: 40, voidOctaves: 3, voidSeed: 71,
   round: false as BleedKernel, roundThreshold: 0.42,
   chipEdge: 3, bleed: 3, contrast: 3.2, threshold: -0.12, fade: 1,
   grainOctaves: 3, chipOctaves: 4, seed: 9, chipSeed: 27, margin: 16, edgeThreshold: 0.8,
+  warpFrequency: 0.03, warpSeed: 3, squashFrequency: 0.14, squashSeed: 37,
 }
 const HEADING: ChipSpec = {
-  grainFrequency: 0.6, displace: 1.5, dilate: 0.2, chipFrequency: 0.5, chipAmount: 0.25,
+  grainFrequency: 0.6, displace: 1.5, warp: 1.2, dilate: 0.2, squash: 1.4, rim: 0, chipFrequency: 0.5, chipAmount: 0.25,
   voidFrequency: 0.35, voidThreshold: 0.72, voidHardness: 40, voidOctaves: 3, voidSeed: 71,
   round: 3 as BleedKernel, roundThreshold: 0.42,
   chipEdge: 5, bleed: false as BleedKernel, contrast: 3.3, threshold: -0.07, fade: 1,
   grainOctaves: 3, chipOctaves: 4, seed: 13, chipSeed: 19, margin: 22, edgeThreshold: 0.8,
+  warpFrequency: 0.03, warpSeed: 3, squashFrequency: 0.14, squashSeed: 37,
 }
 const LARGE: InkSpec = {
-  grainFrequency: 0.34, displace: 1.6, inkFrequency: 0.055, inkFloor: 0.52,
+  grainFrequency: 0.34, displace: 1.6, warp: 2.2, rim: 0, inkFrequency: 0.055, inkFloor: 0.52,
   pinFrequency: 0.55, pinAmount: 1 / 12,
   voidFrequency: 0.35, voidThreshold: 0.72, voidHardness: 40, voidOctaves: 3, voidSeed: 71,
   round: false as BleedKernel, roundThreshold: 0.42,
   chipEdge: 5, bleed: false as BleedKernel, contrast: 1.25, threshold: -0.03, fade: 1,
   grainOctaves: 3, inkOctaves: 3, pinOctaves: 2, seed: 7, inkSeed: 23, pinSeed: 47, margin: 12, edgeThreshold: 0.8,
+  warpFrequency: 0.02, warpSeed: 3,
 }
 
 // 48 段夠細，1/7、1/4、1/12 都落得回原本的門檻上。1 一律放在最亮那端。
@@ -294,31 +332,97 @@ const edgeBand = (t: { chipEdge: BleedKernel; edgeThreshold: number }, input: st
   }
 }
 
+/**
+ * 邊實中淡。要排在拉硬之後 —— 拉硬的斜率會把任何小於 1 的內部 alpha 又推回 1。
+ * 內部遮罩借 edgeBand 的 einner，所以沒有邊緣帶的濾鏡做不了這一道。
+ */
+const rimPass = (rim: number, input: string, interior: string | undefined, out: string) => {
+  if (rim <= 0 || !interior) return { markup: '', out: input }
+  return {
+    markup: `  <feComposite in="${input}" in2="${interior}" operator="in" result="rimIn"/>
+  <feComponentTransfer in="rimIn" result="rimDim"><feFuncA type="linear" slope="${+(1 - Math.min(1, rim)).toFixed(3)}"/></feComponentTransfer>
+  <feComposite in="${input}" in2="${interior}" operator="out" result="rimEdge"/>
+  <feComposite in="rimEdge" in2="rimDim" operator="over" result="${out}"/>\n`,
+    out,
+  }
+}
+
 /** 整體墨量。壓力不足或字面磨低都是墨轉印不完全，先發灰才缺形狀。 */
 const fadePass = (fade: number, input: string) =>
   fade >= 1
     ? ''
     : `  <feComponentTransfer in="${input}"><feFuncA type="linear" slope="${+fade.toFixed(3)}"/></feComponentTransfer>\n`
 
+/**
+ * 整體彎曲。一張頻率極低的噪點當位移圖，整條筆畫跟著微微彎。
+ *
+ * 跟 fib 那道是同一個 primitive，差在尺度：fib 的波長幾個像素，是纖維把邊緣
+ * 推歪；這道的波長幾十個像素，是鉛字沒坐平或紙面起伏，把整條筆畫推彎。
+ * 兩者疊起來才像 —— 只有高頻是毛邊，只有低頻是字型做壞了。
+ * 排在 fib 之前：先是版面歪，然後才是紙面在邊緣上作用。
+ */
+const warpPass = (
+  t: { warp: number; warpFrequency: number; warpSeed: number },
+  input: string,
+  strength: number
+) => {
+  const scale = t.warp * strength
+  if (scale <= 0) return { markup: '', out: input }
+  return {
+    markup: `  <feTurbulence type="fractalNoise" baseFrequency="${t.warpFrequency}" numOctaves="1" seed="${t.warpSeed}" result="wp"/>
+  <feDisplacementMap in="${input}" in2="wp" scale="${+scale.toFixed(3)}" xChannelSelector="R" yChannelSelector="G" result="warped"/>\n`,
+    out: 'warped',
+  }
+}
+
+/**
+ * 墨暈圈單獨抖。脹開之後的形狀再位移一次，然後把沒脹開的字身蓋回去。
+ *
+ * 位移量比暈圈本身寬，所以有的地方暈圈被拉進字身底下（等於沒暈），
+ * 有的地方被推出去（暈得更開）—— 那就是墨順著纖維不均勻地溢出來的樣子。
+ * 核心 over 在上面，字面接觸的那塊永遠清楚。
+ */
+const squashPass = (
+  t: { squash: number; squashFrequency: number; squashSeed: number },
+  core: string,
+  halo: string,
+  strength: number,
+  out: string
+) => {
+  const scale = t.squash * strength
+  if (scale <= 0) return ''
+  return `  <feTurbulence type="fractalNoise" baseFrequency="${t.squashFrequency}" numOctaves="2" seed="${t.squashSeed}" result="sq"/>
+  <feDisplacementMap in="${halo}" in2="sq" scale="${+scale.toFixed(3)}" xChannelSelector="R" yChannelSelector="G" result="squashed"/>
+  <feComposite in="${core}" in2="squashed" operator="over" result="${out}"/>\n`
+}
+
 const chipFilter = (id: string, t: ChipSpec, strength: number) => {
   const displace = t.displace * strength
   const dilate = t.dilate * strength
   const size = 100 + t.margin * 2
   const shaped = roundFilter(t, 'shaped')
+  const warped = warpPass(t, shaped.out, strength)
   const base = dilate > 0 ? 'gain' : 'rough'
   const band = edgeBand(t, base)
   // einner 由 edgeBand 產生，順序上排在 gap 前面，所以拿得到。
   const gap = voidPass(t, 'chipped', strength, band.out ? 'einner' : undefined)
+  // squash 有開就把脹開的結果先抖過再叫 gain，沒開就直接叫 gain。
+  const squash = dilate > 0 ? squashPass(t, 'rough', 'grown', strength, 'gain') : ''
+  const rim = rimPass(t.rim, 'hard', band.out ? 'einner' : undefined, 'rimmed')
+  const grow =
+    dilate > 0
+      ? `  <feMorphology in="rough" operator="dilate" radius="${+dilate.toFixed(3)}" result="${squash ? 'grown' : 'gain'}"/>\n${squash}`
+      : ''
   return `
 <filter id="${id}" x="-${t.margin}%" y="-${t.margin}%" width="${size}%" height="${size}%" color-interpolation-filters="sRGB">
-${shaped.markup}  <feTurbulence type="fractalNoise" baseFrequency="${t.grainFrequency}" numOctaves="${t.grainOctaves}" seed="${t.seed}" result="fib"/>
-  <feDisplacementMap in="${shaped.out}" in2="fib" scale="${+displace.toFixed(3)}" xChannelSelector="R" yChannelSelector="G" result="rough"/>
-${dilate > 0 ? `  <feMorphology in="rough" operator="dilate" radius="${+dilate.toFixed(3)}" result="gain"/>\n` : ''}  <feTurbulence type="fractalNoise" baseFrequency="${t.chipFrequency}" numOctaves="${t.chipOctaves}" seed="${t.chipSeed}" result="mot"/>
+${shaped.markup}${warped.markup}  <feTurbulence type="fractalNoise" baseFrequency="${t.grainFrequency}" numOctaves="${t.grainOctaves}" seed="${t.seed}" result="fib"/>
+  <feDisplacementMap in="${warped.out}" in2="fib" scale="${+displace.toFixed(3)}" xChannelSelector="R" yChannelSelector="G" result="rough"/>
+${grow}  <feTurbulence type="fractalNoise" baseFrequency="${t.chipFrequency}" numOctaves="${t.chipOctaves}" seed="${t.chipSeed}" result="mot"/>
   <feColorMatrix in="mot" type="luminanceToAlpha" result="motl"/>
   <feComponentTransfer in="motl" result="chip"><feFuncA type="discrete" tableValues="${discreteTable(clamp01(t.chipAmount * strength))}"/></feComponentTransfer>
 ${band.markup}${band.out ? `  <feComposite in="chip" in2="${band.out}" operator="in" result="chipRim"/>\n` : ''}  <feComposite in="${base}" in2="${band.out ? 'chipRim' : 'chip'}" operator="out" result="chipped"/>
 ${gap.markup}${bleedFilter(gap.out, t.bleed)}  <feComponentTransfer in="${t.bleed ? 'b' : gap.out}" result="hard"><feFuncA type="linear" slope="${t.contrast}" intercept="${t.threshold}"/></feComponentTransfer>
-${fadePass(t.fade, 'hard')}</filter>`
+${rim.markup}${fadePass(t.fade, rim.out)}</filter>`
 }
 
 const inkFilter = (id: string, t: InkSpec, strength: number) => {
@@ -326,14 +430,16 @@ const inkFilter = (id: string, t: InkSpec, strength: number) => {
   // strength 0 = 完全均勻；strength 2 = 淡處再淡一倍。
   const floor = clamp01(1 - (1 - t.inkFloor) * strength)
   const shaped = roundFilter(t, 'shaped')
+  const warped = warpPass(t, shaped.out, strength)
   // 砂眼也限在邊緣：新字的砂眼是鑄造缺陷（會在面上），但 wear 拉高時多出來的
   // 是磨損，那發生在邊上。兩者共用一道遮罩，取磨損那個位置比較不會像髒點。
   const band = edgeBand(t, 'uneven')
   const gap = voidPass(t, 'chipped', strength, band.out ? 'einner' : undefined)
+  const rim = rimPass(t.rim, 'hard', band.out ? 'einner' : undefined, 'rimmed')
   return `
 <filter id="${id}" x="-${t.margin}%" y="-${t.margin}%" width="${size}%" height="${size}%" color-interpolation-filters="sRGB">
-${shaped.markup}  <feTurbulence type="fractalNoise" baseFrequency="${t.grainFrequency}" numOctaves="${t.grainOctaves}" seed="${t.seed}" result="fib"/>
-  <feDisplacementMap in="${shaped.out}" in2="fib" scale="${+(t.displace * strength).toFixed(3)}" xChannelSelector="R" yChannelSelector="G" result="rough"/>
+${shaped.markup}${warped.markup}  <feTurbulence type="fractalNoise" baseFrequency="${t.grainFrequency}" numOctaves="${t.grainOctaves}" seed="${t.seed}" result="fib"/>
+  <feDisplacementMap in="${warped.out}" in2="fib" scale="${+(t.displace * strength).toFixed(3)}" xChannelSelector="R" yChannelSelector="G" result="rough"/>
   <feTurbulence type="fractalNoise" baseFrequency="${t.inkFrequency}" numOctaves="${t.inkOctaves}" seed="${t.inkSeed}" result="ink"/>
   <feColorMatrix in="ink" type="luminanceToAlpha" result="inkl"/>
   <feComponentTransfer in="inkl" result="inkmask"><feFuncA type="table" tableValues="${inkTable(floor)}"/></feComponentTransfer>
@@ -343,7 +449,7 @@ ${shaped.markup}  <feTurbulence type="fractalNoise" baseFrequency="${t.grainFreq
   <feComponentTransfer in="pinl" result="pinmask"><feFuncA type="discrete" tableValues="${discreteTable(clamp01(t.pinAmount * strength))}"/></feComponentTransfer>
 ${band.markup}${band.out ? `  <feComposite in="pinmask" in2="${band.out}" operator="in" result="pinRim"/>\n` : ''}  <feComposite in="uneven" in2="${band.out ? 'pinRim' : 'pinmask'}" operator="out" result="chipped"/>
 ${gap.markup}${bleedFilter(gap.out, t.bleed)}  <feComponentTransfer in="${t.bleed ? 'b' : gap.out}" result="hard"><feFuncA type="linear" slope="${t.contrast}" intercept="${t.threshold}"/></feComponentTransfer>
-${fadePass(t.fade, 'hard')}</filter>`
+${rim.markup}${fadePass(t.fade, rim.out)}</filter>`
 }
 
 /**
