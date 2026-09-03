@@ -69,7 +69,11 @@ const layout = (spec) => {
   body.innerHTML = redactedHtml(spec.text, spec.barUnit ?? 14)
   // 每顆字都變 inline-block，量出來的框才是整個字身（行高那麼高），中心就是字腔中心。
   // 對版面沒影響：inline-block 的基線就是它裡面那行字的基線。
-  for (const ch of body.querySelectorAll('.lp-ch')) ch.style.display = 'inline-block'
+  // 換行與空白不能包：換行一旦進了 inline-block，就只會在那個小盒子裡面折，外面的行不會斷。
+  for (const ch of body.querySelectorAll('.lp-ch')) {
+    if (!ch.classList.contains('bar') && !(ch.textContent ?? '').trim()) ch.replaceWith(ch.textContent ?? '')
+    else ch.style.display = 'inline-block'
+  }
   wrap.append(body)
   stage.append(wrap)
   document.body.append(stage)
