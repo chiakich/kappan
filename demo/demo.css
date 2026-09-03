@@ -92,6 +92,7 @@ input[type='color'] {
 }
 #editor.lp-v { resize: horizontal; min-width: 340px; height: 460px; }
 
+.downloads { margin: 16px 0 0; }
 .hint { max-width: 620px; margin: 14px auto 44px; font-size: 11px; line-height: 1.7; text-align: center; opacity: .62; }
 .hint a, .colophon a { color: var(--red); text-decoration: underline; text-underline-offset: 2px; }
 

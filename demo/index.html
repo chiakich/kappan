@@ -55,7 +55,6 @@
     <div class="group">
       <p class="lbl">紙</p><input id="c-paper" type="color" value="#ffffff" aria-label="紙色">
       <p class="lbl">墨</p><input id="c-ink" type="color" value="#000000" aria-label="墨色">
-      <p class="lbl">硃</p><input id="c-red" type="color" value="#9d3327" aria-label="硃色">
     </div>
   </section>
 
@@ -63,16 +62,19 @@
   <!-- 編輯區的內容刻意不由外面重畫：contenteditable 一旦被換掉，輸入法的組字就斷了。
        逐字歪斜要把每個字包成 span，那跟編輯衝突，所以離開才排版，點回來就還原。 -->
   <div id="editor" class="sg lp-typed" contenteditable spellcheck="false"></div>
-  <p class="tp hint" id="status">字體由 <a href="https://font.emtech.cc" target="_blank" rel="noreferrer">emfont</a> 按你打的字現切，一次只下載用得到的那幾個字。點進編輯區可以改字，移開就排版。右下角可以拉大小。</p>
+  <section class="toolbar downloads">
+    <div class="group">
+      <p class="lbl">存成圖</p>
+      <button type="button" class="sg key" data-dl="jpg">JPG · 含紙</button>
+      <button type="button" class="sg key" data-dl="png">PNG · 去背</button>
+      <button type="button" class="sg key" data-dl="svg">SVG · 向量含字型</button>
+    </div>
+  </section>
+  <p class="tp hint" id="status">動態載入字體由 <a href="https://font.emtech.cc" target="_blank" rel="noreferrer">emfont</a> 提供。點進編輯區可以改字，移開就排版。右下角可以拉大小。</p>
 
   <!-- ── 算出來的參數 ─────────────────────────────── -->
   <section class="recipe">
-    <p class="lbl">算出來的濾鏡參數 · 一般行文那一級</p>
     <pre class="tp" id="recipe"></pre>
-    <p class="tp hint">
-      這是 <code>pressTuning()</code> 從上面四個成因算出來的。動一個成因，好幾個數字會一起變 ——
-      那個對應關係才是整套東西的核心，剩下的都只是實作。
-    </p>
   </section>
 
   <div class="rule"></div>

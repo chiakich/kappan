@@ -9,6 +9,7 @@ import {
   HAO_SIZES,
   LATIN_SIZES,
 } from '../dist/kappan.js'
+import { sheetSvg, rasterize, canvasBlob, withBackground, download } from './print.js'
 
 const $ = (id) => document.getElementById(id)
 const sheet = document.body
@@ -115,7 +116,6 @@ const paint = () => {
     '--paper': $('c-paper').value,
     '--ink': $('c-ink').value,
     '--ink3': $('c-ink').value,
-    '--red': $('c-red').value,
     '--texture': $('texture').value,
     '--lean': $('lean').value,
     '--weight': $('jitter').value,
@@ -167,11 +167,14 @@ const status = $('status')
 const statusText = status.innerHTML
 let faces = []
 let ticket = 0
+// 存圖時要把字型檔嵌進 SVG，所以子集的 buffer 要留著。
+let faceFile = null
 
 const loadFace = async () => {
   const id = $('face').value
   if (!id) {
     family = ''
+    faceFile = null
     paint()
     return
   }
@@ -198,6 +201,7 @@ const loadFace = async () => {
     document.fonts.add(face)
     if (mine !== ticket) return
     family = name
+    faceFile = { family: name, weight, buffer }
     status.textContent = `${(buffer.byteLength / 1024).toFixed(1)} KB · ${words.length} 字`
     paint()
   } catch (error) {
@@ -238,6 +242,68 @@ fetch(`${EMFONT}/list`)
     status.textContent = '字體清單取不到，先用系統的字。'
   })
 
+/* ── 存成圖 ──────────────────────────────────────────────── */
+// 把編輯區現在的樣子印成一張圖。紙的大小跟編輯區一樣，內容比它長就跟著長。
+const PAD = [38, 34]
+const SCALE = 2
+
+/** 編輯區的純文字。排過版的話黑條已經是空的 span，要照寬度還原成 █。 */
+const plainText = () => {
+  const clone = editor.cloneNode(true)
+  for (const span of clone.querySelectorAll('.lp-ch.bar')) {
+    const w = Number.parseFloat(span.style.getPropertyValue('--bar-w'))
+    span.replaceWith('█'.repeat(Math.max(1, Math.round(w / BAR_UNIT))))
+  }
+  clone.style.cssText = 'position:fixed;left:-9999px;top:0;white-space:pre-wrap'
+  document.body.append(clone)
+  const text = clone.innerText.replace(/\n$/, '')
+  clone.remove()
+  return text
+}
+
+const sheetSpec = (transparent) => {
+  const vars = {}
+  for (const k of ['--paper', '--ink', '--ink3', '--texture', '--lean', '--weight', '--pitch', '--type'])
+    vars[k] = sheet.style.getPropertyValue(k) || getComputedStyle(sheet).getPropertyValue(k)
+  return {
+    text: plainText(),
+    className: editor.className,
+    letterSpacing: editor.style.letterSpacing || '0em',
+    vertical: direction === 'v',
+    vars,
+    filters: pressTuning(readPress()),
+    fonts: faceFile ? [faceFile] : [],
+    innerWidth: editor.clientWidth - PAD[0] * 2,
+    innerHeight: editor.clientHeight - PAD[1] * 2,
+    pad: PAD,
+    barUnit: BAR_UNIT,
+    transparent,
+  }
+}
+
+document.querySelector('.downloads').addEventListener('click', async (e) => {
+  const kind = e.target.dataset?.dl
+  if (!kind) return
+  const stem = `kappan-${new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-')}`
+  const before = status.textContent
+  status.textContent = '印一張…'
+  try {
+    await document.fonts.ready
+    const s = await sheetSvg(sheetSpec(kind === 'png'))
+    if (kind === 'svg') {
+      download(new Blob([s.svg], { type: 'image/svg+xml;charset=utf-8' }), `${stem}.svg`)
+    } else {
+      const canvas = await rasterize(s.svg, s.width, s.height, SCALE)
+      if (kind === 'jpg') download(await canvasBlob(withBackground(canvas, $('c-paper').value), 'image/jpeg', 0.92), `${stem}.jpg`)
+      else download(await canvasBlob(canvas, 'image/png'), `${stem}.png`)
+    }
+    status.textContent = before
+  } catch (error) {
+    console.error(error)
+    status.textContent = '存檔失敗，看看主控台。'
+  }
+})
+
 /* ── 接線 ────────────────────────────────────────────────── */
 for (const d of DIALS) {
   $(d.id).addEventListener('input', d.live ? paint : () => {})
@@ -246,7 +312,7 @@ for (const d of DIALS) {
 $('texture').addEventListener('input', () => {
   textureTouched = true
 })
-for (const id of ['c-paper', 'c-ink', 'c-red']) $(id).addEventListener('input', paint)
+for (const id of ['c-paper', 'c-ink']) $(id).addEventListener('input', paint)
 $('size').addEventListener('change', paint)
 
 document.querySelectorAll('[data-dir]').forEach((btn) => {
