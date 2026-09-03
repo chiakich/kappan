@@ -4,8 +4,8 @@
 
 這個套件是 CSS 加一段 SVG 濾鏡定義組成的，若要進一步提升效果，可以參考下面的說明做逐字歪斜。
 
-[`demo/`](demo/) 是一頁鉛字產生器：打一段字，調墨、調紙、調壓力、調顏色，看它被印出來的樣子。
-沒有建置步驟，`npm run build` 之後開一個靜態伺服器就能跑：
+[kappan.chiaki.ch](https://kappan.chiaki.ch/) 是一頁鉛字產生器：打一段字，調墨、調紙、調壓力、調顏色，看它被印出來的樣子，可以存成 JPG、去背 PNG 或向量 SVG。
+原始碼在 [`demo/`](demo/)，沒有建置步驟，`npm run build` 之後開一個靜態伺服器就能跑：
 
 ```
 npm run build
@@ -100,4 +100,4 @@ letterpressCss({ filters: pressTuning({ ink: 1.6, paper: 2 }) })
 
 ## 換字體
 
-`typeFamily` 與 `latinFamily` 就是兩個字型堆字串，套件不綁任何一套字，也不幫你載字體檔。
+字型要自行設定：`typeFamily` 與 `latinFamily` 就是兩個字型堆字串，套件不綁任何一套字，也不幫你載字體檔。

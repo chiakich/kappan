@@ -13,8 +13,8 @@ import {
 import { sheetSvg, rasterize, canvasBlob, withBackground, download } from './print.js'
 
 const $ = (id) => document.getElementById(id)
-// 調節鈕只動編輯區這一塊。整頁的紙、墨、濾鏡都是套件預設，動的是 #editor 身上的變數。
-const sheet = document.getElementById('editor')
+// 調節鈕只動編輯區這一塊。整頁的紙、墨、濾鏡都是套件預設，動的是 #paper 身上的變數。
+const sheet = document.getElementById('paper')
 const editor = $('editor')
 
 const START_TEXT = '千秋印書館謹啟　承印中西書籍章程契據\n打一段字，調墨、調紙、調壓力，看它被印出來的樣子。'
@@ -82,7 +82,7 @@ editorFilters.setAttribute('height', '0')
 editorFilters.setAttribute('aria-hidden', 'true')
 editorFilters.setAttribute('style', 'position:absolute')
 document.head.append(editorFilters)
-for (const t of ['s', 't', 'd', 'x']) editor.style.setProperty(`--lp-${t}`, `url(#${EDITOR_PREFIX}-${t})`)
+for (const t of ['s', 't', 'd', 'x']) sheet.style.setProperty(`--lp-${t}`, `url(#${EDITOR_PREFIX}-${t})`)
 
 let textureTouched = false
 let raf = 0
@@ -118,7 +118,7 @@ let family = ''
 let direction = 'h'
 
 const paint = () => {
-  editor.className = `sg lp-typed lp-paper ${$('size').value}` + (direction === 'v' ? ' lp-v' : direction === 'rtl' ? ' lp-rtl' : '')
+  editor.className = `sg lp-typed ${$('size').value}` + (direction === 'v' ? ' lp-v' : direction === 'rtl' ? ' lp-rtl' : '')
   editor.style.letterSpacing = `${$('tracking').value}em`
 
   const vars = {
@@ -278,8 +278,7 @@ const sheetSpec = (transparent) => {
     vars[k] = sheet.style.getPropertyValue(k) || getComputedStyle(sheet).getPropertyValue(k)
   return {
     text: plainText(),
-    // 紙紋在匯出時另外畫，不帶 .lp-paper 進去量。
-    className: editor.className.replace('lp-paper', ''),
+    className: editor.className,
     letterSpacing: editor.style.letterSpacing || '0em',
     vertical: direction === 'v',
     vars,

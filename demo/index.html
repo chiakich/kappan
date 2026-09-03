@@ -61,7 +61,9 @@
   <!-- ── 試打 ─────────────────────────────────────── -->
   <!-- 編輯區的內容刻意不由外面重畫：contenteditable 一旦被換掉，輸入法的組字就斷了。
        逐字歪斜要把每個字包成 span，那跟編輯衝突，所以離開才排版，點回來就還原。 -->
-  <div id="editor" class="sg lp-typed lp-paper" contenteditable spellcheck="false"></div>
+  <!-- 紙與字分兩層：濾鏡掛在 #editor（字）上，紙色、紙紋與變數都在 #paper。
+       紙如果放在濾鏡裡面，墨量不足的「整體發灰」會把紙也一起變透明。 -->
+  <div id="paper" class="lp-paper"><div id="editor" class="sg lp-typed" contenteditable spellcheck="false"></div></div>
   <section class="toolbar downloads">
     <div class="group">
       <p class="lbl">存成圖</p>
@@ -79,8 +81,7 @@
 
   <div class="rule"></div>
   <p class="tp colophon">
-    <a href="https://github.com/chiakich/kappan">kappan</a> · MIT ·
-    字型不含在內，<code>--type</code> 指到哪套字是你自己的事
+    <a href="https://github.com/chiakich/kappan">kappan</a> · MIT · 字型要自行設定
   </p>
 </main>
 

@@ -76,12 +76,22 @@ input[type='color'] {
 /* ── 試打區 ───────────────────────────────────────── */
 /* 字號 class 掛在編輯區本身，不掛在外層 —— kappan 的 `.lp .sg, .lp p` 已經給了 -t，
    外層再掛一個字號的濾鏡就會疊兩層，卷積與位移各跑兩遍，字會糊掉。 */
-/* 編輯區是自己的一張紙：紙色、墨色、紙紋、濾鏡全從它身上的變數來，整頁不跟著動。
+/* 編輯區是自己的一張紙：紙色、墨色、紙紋、變數全在 #paper，整頁不跟著動；
+   濾鏡只掛在裡面的 #editor（字）上，紙不會被墨量不足的發灰一起弄透明。
    z-index 要高過 body 那層紙紋（.lp-paper::after 是 2），不然整頁的紙紋會疊在它自己的上面。 */
-#editor {
+#paper {
   border: 1px solid var(--ink);
-  padding: 34px 38px;
   color: var(--ink);
+  background: var(--paper);
+  position: relative;
+  z-index: 3;
+  /* SVG 參照濾鏡在主執行緒逐像素算。把這一塊隔成自己的圖層，捲動時就不必重畫它。 */
+  contain: paint;
+  will-change: transform;
+}
+#paper:has(#editor.lp-v) { display: inline-block; }
+#editor {
+  padding: 34px 38px;
   min-height: 240px;
   height: 300px;
   resize: vertical;
@@ -89,12 +99,7 @@ input[type='color'] {
   outline: none;
   white-space: pre-wrap;
   cursor: text;
-  background: var(--paper);
-  position: relative;
-  z-index: 3;
-  /* SVG 參照濾鏡在主執行緒逐像素算。把這一塊隔成自己的圖層，捲動時就不必重畫它。 */
-  contain: paint;
-  will-change: transform;
+  background: none;
 }
 #editor.lp-v { resize: horizontal; min-width: 340px; height: 460px; }
 
