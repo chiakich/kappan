@@ -35,7 +35,7 @@ $('size').value = 'lp-sz-3'
 // live 的只改 CSS 變數，拖動就即時反應；會重建整棵濾鏡樹的等放開才套用。
 const DIALS = [
   { id: 'ink', label: '上墨量', why: '少了筆畫會斷，多了糊成一團', max: 2, press: true },
-  { id: 'pressure', label: '壓力', why: '輕了墨轉不滿、整體發灰，重了墨被擠出邊緣', max: 2, press: true },
+  { id: 'pressure', label: '壓力', why: '輕了墨轉不滿、整體發灰，重了墨被擠到邊上，邊實中淡、紙上留壓痕', max: 2, press: true },
   { id: 'paper-grade', label: '紙的粗糙', why: '光滑的塗佈紙，到粗糙吸墨的手工紙', max: 2, press: true },
   { id: 'wear', label: '鉛字年紀', why: '舊字的字面被磨鈍、邊上崩角、也印得比較淡', max: 2, press: true },
   { id: 'lean', label: '歪斜', why: '每顆字擺進去都差那麼一點', max: 2, live: true },
@@ -84,6 +84,8 @@ const remount = () => {
     // 紙粗糙的話紙紋本身也該濃一點 —— 那是同一張紙。使用者拉過之後就以他的為準。
     if (!textureTouched) $('texture').value = pressTexture(press).toFixed(2)
     const t = filters.text
+    // 彎曲、暈圈抖動、壓痕在內文級數上關著，拿標題級的值來顯示才看得出成因在動。
+    const h = filters.heading
     $('recipe').textContent = [
       `圓角／積墨   ${t.round ? `${t.round}×${t.round}　門檻 ${t.roundThreshold.toFixed(2)}` : '關'}`,
       `推歪         ${t.displace.toFixed(2)}`,
@@ -91,7 +93,9 @@ const remount = () => {
       `缺塊門檻     ${t.voidThreshold.toFixed(3)}`,
       `墨暈         ${t.bleed ? `${t.bleed}×${t.bleed}` : '關'}`,
       `拉硬         ${t.contrast.toFixed(2)}　位移 ${t.threshold.toFixed(3)}`,
+      `邊實中淡     ${t.rim.toFixed(3)}${t.rim > 0 ? '　（壓過頭，墨被擠到邊上）' : ''}`,
       `整體墨量     ${t.fade.toFixed(3)}${t.fade < 1 ? '　（墨轉印不完全，整體發灰）' : ''}`,
+      `標題級以上   彎曲 ${h.warp.toFixed(2)}　暈圈抖動 ${h.squash.toFixed(2)}　壓痕 ${h.deboss.toFixed(2)}`,
     ].join('\n')
     paint()
   })
