@@ -89,6 +89,9 @@ input[type='color'] {
   background: none;
   position: relative;
   z-index: 1;
+  /* SVG 參照濾鏡在主執行緒逐像素算。把這一塊隔成自己的圖層，捲動時就不必重畫它。 */
+  contain: paint;
+  will-change: transform;
 }
 #editor.lp-v { resize: horizontal; min-width: 340px; height: 460px; }
 
