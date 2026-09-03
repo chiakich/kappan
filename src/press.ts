@@ -61,17 +61,26 @@ const inkedOf = (p: Press) =>
   )
 
 /**
- * 等效墨量。把「把墨往外推」的成因合成一個 0~2 的量，1 是中性。
+ * 等效墨量。「筆畫均勻地胖、字腔填滿」這一組效應的驅動量，0~2，1 是中性。
  *
  * 文獻把 loss of sharpness、thickened counters、haloing 同時列在「上墨量過多」
- * 與「壓力過大」底下 —— 那是同一組缺陷，因為壓力跟墨都是把墨往外擠。
+ * 與「壓力過大」底下，所以這裡以前把壓重算成 0.6 倍的墨多。結果是兩個成因往上
+ * 調看到的是同一種胖，分不出來。它們物理上的簽名其實不同：墨多是墨膜厚，
+ * 整條筆畫均勻地胖出去；壓重是墨被字面擠到外圍，中央變薄、邊緣堆起一圈。
+ * 所以胖跟填滿主要歸上墨量，壓力只留一點點（它終究會多擠出一些墨），
+ * 壓重自己的臉交給 squash 與 rim 去長。
  *
- * 但只有往上那一段合流。壓力不足不會讓筆畫變細，它讓整版發灰（走 inkedOf），
- * 所以往下那一段只認上墨量 —— 否則「墨少壓力大」會被算成偏胖，那是反的：
- * 那個組合印出來是又瘦又乾淨。
+ * 往下那一段只認上墨量。壓力不足不會讓筆畫變細，它讓整版發灰（走 inkedOf）——
+ * 否則「墨少壓力大」會被算成偏胖，那是反的：那個組合印出來是又瘦又乾淨。
  */
 const inkEqOf = (p: Press) =>
-  clamp(1 - Math.max(0, 1 - p.ink) + Math.max(0, p.ink - 1) + Math.max(0, p.pressure - 1) * 0.6, 0, 2)
+  clamp(1 - Math.max(0, 1 - p.ink) + Math.max(0, p.ink - 1) + Math.max(0, p.pressure - 1) * 0.2, 0, 2)
+
+/**
+ * 邊實中淡的程度。只有壓過頭才出現，中性以下是 0，所以四個成因全 1 時不作用。
+ * 上限 .25：試過 .4，中央灰到像雙線描邊，那是空心字不是印壓。
+ */
+const rimOf = (p: Press) => clamp(Math.max(0, p.pressure - 1) * 0.25, 0, 0.25)
 
 /**
  * 四級共通的部分。錨點都是 d 的倍數，所以每一級各自成立。
@@ -84,7 +93,16 @@ const inkEqOf = (p: Press) =>
  */
 const common = (
   p: Press,
-  d: { displace: number; voidThreshold: number; contrast: number; threshold: number; round: BleedKernel; roundThreshold: number },
+  d: {
+    displace: number
+    warp: number
+    rim: number
+    voidThreshold: number
+    contrast: number
+    threshold: number
+    round: BleedKernel
+    roundThreshold: number
+  },
   fill: number
 ) => ({
   // 圓角是印刷這個動作本身造成的，跟墨量無關，所以核心不動。但積墨的程度會 ——
@@ -103,6 +121,10 @@ const common = (
     : d.roundThreshold,
   // 紙愈粗，纖維把筆畫推得愈歪；壓力愈大，紙被壓平，推歪反而變少。
   displace: clamp(d.displace * ramp(p.paper, 0.4, 1, 1.6) * ramp(p.pressure, 1.5, 1, 0.8), 0, 4),
+  // 整條筆畫的彎曲來自紙面起伏，粗紙起伏大；壓力大會把紙壓平，彎得少。
+  // 比 displace 對紙的反應緩 —— 纖維推歪是紙的表面，起伏是紙的厚度，後者變化小。
+  warp: clamp(d.warp * ramp(p.paper, 0.6, 1, 1.4) * ramp(p.pressure, 1.3, 1, 0.85), 0, 6),
+  rim: rimOf(p),
   voidThreshold: clamp(d.voidThreshold - starveOf(p) * 0.28, 0.35, 1),
   // 吸墨的紙會讓邊緣滲開；墨上太多的話，再光滑的紙也擋不住。
   // 一律用 5：3 的暈圈只有 1px，拉硬還沒推到底就把它吃完了，再推也不會更胖。
@@ -121,6 +143,9 @@ const chip = (p: Press, d: typeof FILTER_DEFAULTS.text, fill: number): Partial<C
   // 拿滑桿掃過去會在 0.24→0.27 之間突然粗一圈，而且門檻隨螢幕的 DPR 跑。
   // 固定值不會跳，所以留著沒關係；「墨往外擠」改由墨暈加拉硬去做。
   dilate: d.dilate,
+  // 暈圈的不規則是印壓的事：壓得愈重，被擠出去的墨愈多，邊緣愈不受字面控制。
+  // 墨量不進來 —— 墨多而壓力正常，多出來的墨是均勻地胖，不是擠出去的。
+  squash: clamp(d.squash * ramp(p.pressure, 0.3, 1, 1.8), 0, 4),
   // 崩角只跟字的年紀有關。新字的缺陷是表面細斑點，舊字是真的崩掉一角 ——
   // 所以年紀一大不只變多，尺度也要變大（頻率降低＝單個缺口變大）。
   chipAmount: clamp(ramp(p.wear, 0, d.chipAmount, d.chipAmount * 2.24), 0, 0.5),
