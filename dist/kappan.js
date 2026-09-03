@@ -54,7 +54,10 @@ var tokensCss = (o) => {
 var SMALL = {
   grainFrequency: 1.1,
   displace: 0.55,
+  warp: 0,
   dilate: 0,
+  squash: 0.8,
+  rim: 0,
   chipFrequency: 1.7,
   chipAmount: 1 / 7,
   voidFrequency: 0.35,
@@ -74,12 +77,19 @@ var SMALL = {
   seed: 4,
   chipSeed: 31,
   margin: 14,
-  edgeThreshold: 0.8
+  edgeThreshold: 0.8,
+  warpFrequency: 0.03,
+  warpSeed: 3,
+  squashFrequency: 0.14,
+  squashSeed: 37
 };
 var TEXT = {
   grainFrequency: 0.88,
   displace: 1.1,
+  warp: 0,
   dilate: 0,
+  squash: 1,
+  rim: 0,
   chipFrequency: 1.05,
   chipAmount: 1 / 7,
   voidFrequency: 0.35,
@@ -99,12 +109,19 @@ var TEXT = {
   seed: 9,
   chipSeed: 27,
   margin: 16,
-  edgeThreshold: 0.8
+  edgeThreshold: 0.8,
+  warpFrequency: 0.03,
+  warpSeed: 3,
+  squashFrequency: 0.14,
+  squashSeed: 37
 };
 var HEADING = {
   grainFrequency: 0.6,
   displace: 1.5,
+  warp: 1.2,
   dilate: 0.2,
+  squash: 1.4,
+  rim: 0,
   chipFrequency: 0.5,
   chipAmount: 0.25,
   voidFrequency: 0.35,
@@ -124,11 +141,17 @@ var HEADING = {
   seed: 13,
   chipSeed: 19,
   margin: 22,
-  edgeThreshold: 0.8
+  edgeThreshold: 0.8,
+  warpFrequency: 0.03,
+  warpSeed: 3,
+  squashFrequency: 0.14,
+  squashSeed: 37
 };
 var LARGE = {
   grainFrequency: 0.34,
   displace: 1.6,
+  warp: 2.2,
+  rim: 0,
   inkFrequency: 0.055,
   inkFloor: 0.52,
   pinFrequency: 0.55,
@@ -152,7 +175,9 @@ var LARGE = {
   inkSeed: 23,
   pinSeed: 47,
   margin: 12,
-  edgeThreshold: 0.8
+  edgeThreshold: 0.8,
+  warpFrequency: 0.02,
+  warpSeed: 3
 };
 var STEPS = 48;
 var discreteTable = (amount) => {
@@ -212,39 +237,74 @@ var edgeBand = (t, input) => {
     out: "eband"
   };
 };
+var rimPass = (rim, input, interior, out) => {
+  if (rim <= 0 || !interior) return { markup: "", out: input };
+  return {
+    markup: `  <feComposite in="${input}" in2="${interior}" operator="in" result="rimIn"/>
+  <feComponentTransfer in="rimIn" result="rimDim"><feFuncA type="linear" slope="${+(1 - Math.min(1, rim)).toFixed(3)}"/></feComponentTransfer>
+  <feComposite in="${input}" in2="${interior}" operator="out" result="rimEdge"/>
+  <feComposite in="rimEdge" in2="rimDim" operator="over" result="${out}"/>
+`,
+    out
+  };
+};
 var fadePass = (fade, input) => fade >= 1 ? "" : `  <feComponentTransfer in="${input}"><feFuncA type="linear" slope="${+fade.toFixed(3)}"/></feComponentTransfer>
 `;
+var warpPass = (t, input, strength) => {
+  const scale = t.warp * strength;
+  if (scale <= 0) return { markup: "", out: input };
+  return {
+    markup: `  <feTurbulence type="fractalNoise" baseFrequency="${t.warpFrequency}" numOctaves="1" seed="${t.warpSeed}" result="wp"/>
+  <feDisplacementMap in="${input}" in2="wp" scale="${+scale.toFixed(3)}" xChannelSelector="R" yChannelSelector="G" result="warped"/>
+`,
+    out: "warped"
+  };
+};
+var squashPass = (t, core, halo, strength, out) => {
+  const scale = t.squash * strength;
+  if (scale <= 0) return "";
+  return `  <feTurbulence type="fractalNoise" baseFrequency="${t.squashFrequency}" numOctaves="2" seed="${t.squashSeed}" result="sq"/>
+  <feDisplacementMap in="${halo}" in2="sq" scale="${+scale.toFixed(3)}" xChannelSelector="R" yChannelSelector="G" result="squashed"/>
+  <feComposite in="${core}" in2="squashed" operator="over" result="${out}"/>
+`;
+};
 var chipFilter = (id, t, strength) => {
   const displace = t.displace * strength;
   const dilate = t.dilate * strength;
   const size2 = 100 + t.margin * 2;
   const shaped = roundFilter(t, "shaped");
+  const warped = warpPass(t, shaped.out, strength);
   const base = dilate > 0 ? "gain" : "rough";
   const band = edgeBand(t, base);
   const gap = voidPass(t, "chipped", strength, band.out ? "einner" : void 0);
+  const squash = dilate > 0 ? squashPass(t, "rough", "grown", strength, "gain") : "";
+  const rim = rimPass(t.rim, "hard", band.out ? "einner" : void 0, "rimmed");
+  const grow = dilate > 0 ? `  <feMorphology in="rough" operator="dilate" radius="${+dilate.toFixed(3)}" result="${squash ? "grown" : "gain"}"/>
+${squash}` : "";
   return `
 <filter id="${id}" x="-${t.margin}%" y="-${t.margin}%" width="${size2}%" height="${size2}%" color-interpolation-filters="sRGB">
-${shaped.markup}  <feTurbulence type="fractalNoise" baseFrequency="${t.grainFrequency}" numOctaves="${t.grainOctaves}" seed="${t.seed}" result="fib"/>
-  <feDisplacementMap in="${shaped.out}" in2="fib" scale="${+displace.toFixed(3)}" xChannelSelector="R" yChannelSelector="G" result="rough"/>
-${dilate > 0 ? `  <feMorphology in="rough" operator="dilate" radius="${+dilate.toFixed(3)}" result="gain"/>
-` : ""}  <feTurbulence type="fractalNoise" baseFrequency="${t.chipFrequency}" numOctaves="${t.chipOctaves}" seed="${t.chipSeed}" result="mot"/>
+${shaped.markup}${warped.markup}  <feTurbulence type="fractalNoise" baseFrequency="${t.grainFrequency}" numOctaves="${t.grainOctaves}" seed="${t.seed}" result="fib"/>
+  <feDisplacementMap in="${warped.out}" in2="fib" scale="${+displace.toFixed(3)}" xChannelSelector="R" yChannelSelector="G" result="rough"/>
+${grow}  <feTurbulence type="fractalNoise" baseFrequency="${t.chipFrequency}" numOctaves="${t.chipOctaves}" seed="${t.chipSeed}" result="mot"/>
   <feColorMatrix in="mot" type="luminanceToAlpha" result="motl"/>
   <feComponentTransfer in="motl" result="chip"><feFuncA type="discrete" tableValues="${discreteTable(clamp01(t.chipAmount * strength))}"/></feComponentTransfer>
 ${band.markup}${band.out ? `  <feComposite in="chip" in2="${band.out}" operator="in" result="chipRim"/>
 ` : ""}  <feComposite in="${base}" in2="${band.out ? "chipRim" : "chip"}" operator="out" result="chipped"/>
 ${gap.markup}${bleedFilter(gap.out, t.bleed)}  <feComponentTransfer in="${t.bleed ? "b" : gap.out}" result="hard"><feFuncA type="linear" slope="${t.contrast}" intercept="${t.threshold}"/></feComponentTransfer>
-${fadePass(t.fade, "hard")}</filter>`;
+${rim.markup}${fadePass(t.fade, rim.out)}</filter>`;
 };
 var inkFilter = (id, t, strength) => {
   const size2 = 100 + t.margin * 2;
   const floor = clamp01(1 - (1 - t.inkFloor) * strength);
   const shaped = roundFilter(t, "shaped");
+  const warped = warpPass(t, shaped.out, strength);
   const band = edgeBand(t, "uneven");
   const gap = voidPass(t, "chipped", strength, band.out ? "einner" : void 0);
+  const rim = rimPass(t.rim, "hard", band.out ? "einner" : void 0, "rimmed");
   return `
 <filter id="${id}" x="-${t.margin}%" y="-${t.margin}%" width="${size2}%" height="${size2}%" color-interpolation-filters="sRGB">
-${shaped.markup}  <feTurbulence type="fractalNoise" baseFrequency="${t.grainFrequency}" numOctaves="${t.grainOctaves}" seed="${t.seed}" result="fib"/>
-  <feDisplacementMap in="${shaped.out}" in2="fib" scale="${+(t.displace * strength).toFixed(3)}" xChannelSelector="R" yChannelSelector="G" result="rough"/>
+${shaped.markup}${warped.markup}  <feTurbulence type="fractalNoise" baseFrequency="${t.grainFrequency}" numOctaves="${t.grainOctaves}" seed="${t.seed}" result="fib"/>
+  <feDisplacementMap in="${warped.out}" in2="fib" scale="${+(t.displace * strength).toFixed(3)}" xChannelSelector="R" yChannelSelector="G" result="rough"/>
   <feTurbulence type="fractalNoise" baseFrequency="${t.inkFrequency}" numOctaves="${t.inkOctaves}" seed="${t.inkSeed}" result="ink"/>
   <feColorMatrix in="ink" type="luminanceToAlpha" result="inkl"/>
   <feComponentTransfer in="inkl" result="inkmask"><feFuncA type="table" tableValues="${inkTable(floor)}"/></feComponentTransfer>
@@ -255,7 +315,7 @@ ${shaped.markup}  <feTurbulence type="fractalNoise" baseFrequency="${t.grainFreq
 ${band.markup}${band.out ? `  <feComposite in="pinmask" in2="${band.out}" operator="in" result="pinRim"/>
 ` : ""}  <feComposite in="uneven" in2="${band.out ? "pinRim" : "pinmask"}" operator="out" result="chipped"/>
 ${gap.markup}${bleedFilter(gap.out, t.bleed)}  <feComponentTransfer in="${t.bleed ? "b" : gap.out}" result="hard"><feFuncA type="linear" slope="${t.contrast}" intercept="${t.threshold}"/></feComponentTransfer>
-${fadePass(t.fade, "hard")}</filter>`;
+${rim.markup}${fadePass(t.fade, rim.out)}</filter>`;
 };
 var FILTER_VARIANTS = {
   /** 新字新墨，幾乎不破。小字級的內文或介面用。 */
@@ -516,7 +576,8 @@ var inkedOf = (p) => clamp(
   0.3,
   1
 );
-var inkEqOf = (p) => clamp(1 - Math.max(0, 1 - p.ink) + Math.max(0, p.ink - 1) + Math.max(0, p.pressure - 1) * 0.6, 0, 2);
+var inkEqOf = (p) => clamp(1 - Math.max(0, 1 - p.ink) + Math.max(0, p.ink - 1) + Math.max(0, p.pressure - 1) * 0.2, 0, 2);
+var rimOf = (p) => clamp(Math.max(0, p.pressure - 1) * 0.25, 0, 0.25);
 var common = (p, d, fill) => ({
   // 圓角是印刷這個動作本身造成的，跟墨量無關，所以核心不動。但積墨的程度會 ——
   // 墨愈多，交會處填得愈滿，門檻就愈低。
@@ -531,6 +592,10 @@ var common = (p, d, fill) => ({
   ) : d.roundThreshold,
   // 紙愈粗，纖維把筆畫推得愈歪；壓力愈大，紙被壓平，推歪反而變少。
   displace: clamp(d.displace * ramp(p.paper, 0.4, 1, 1.6) * ramp(p.pressure, 1.5, 1, 0.8), 0, 4),
+  // 整條筆畫的彎曲來自紙面起伏，粗紙起伏大；壓力大會把紙壓平，彎得少。
+  // 比 displace 對紙的反應緩 —— 纖維推歪是紙的表面，起伏是紙的厚度，後者變化小。
+  warp: clamp(d.warp * ramp(p.paper, 0.6, 1, 1.4) * ramp(p.pressure, 1.3, 1, 0.85), 0, 6),
+  rim: rimOf(p),
   voidThreshold: clamp(d.voidThreshold - starveOf(p) * 0.28, 0.35, 1),
   // 吸墨的紙會讓邊緣滲開；墨上太多的話，再光滑的紙也擋不住。
   // 一律用 5：3 的暈圈只有 1px，拉硬還沒推到底就把它吃完了，再推也不會更胖。
@@ -548,6 +613,9 @@ var chip = (p, d, fill) => ({
   // 拿滑桿掃過去會在 0.24→0.27 之間突然粗一圈，而且門檻隨螢幕的 DPR 跑。
   // 固定值不會跳，所以留著沒關係；「墨往外擠」改由墨暈加拉硬去做。
   dilate: d.dilate,
+  // 暈圈的不規則是印壓的事：壓得愈重，被擠出去的墨愈多，邊緣愈不受字面控制。
+  // 墨量不進來 —— 墨多而壓力正常，多出來的墨是均勻地胖，不是擠出去的。
+  squash: clamp(d.squash * ramp(p.pressure, 0.3, 1, 1.8), 0, 4),
   // 崩角只跟字的年紀有關。新字的缺陷是表面細斑點，舊字是真的崩掉一角 ——
   // 所以年紀一大不只變多，尺度也要變大（頻率降低＝單個缺口變大）。
   chipAmount: clamp(ramp(p.wear, 0, d.chipAmount, d.chipAmount * 2.24), 0, 0.5),
