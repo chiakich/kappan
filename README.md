@@ -1,11 +1,8 @@
 # kappan 網頁活版印刷套件
 
-在網頁上重現鉛字印刷的樣子：紙的纖維、墨的濃淡、字被壓歪、鉛字崩角。
+在網頁上重現鉛字印刷的質感。一份 CSS 加一段 SVG 濾鏡，選配逐字歪斜。
 
-這個套件是 CSS 加一段 SVG 濾鏡定義組成的，若要進一步提升效果，可以參考下面的說明做逐字歪斜。
-
-[kappan.chiaki.ch](https://kappan.chiaki.ch/) 是一頁鉛字產生器：打一段字，調墨、調紙、調壓力、調顏色，看它被印出來的樣子，可以存成 JPG、去背 PNG 或向量 SVG。
-原始碼在 [`demo/`](demo/)，沒有建置步驟，`npm run build` 之後開一個靜態伺服器就能跑：
+鉛字產生器：[kappan.chiaki.ch](https://kappan.chiaki.ch/)，可以存成 JPG、去背 PNG 或向量 SVG。原始碼在 [`demo/`](demo/)，在本機跑：
 
 ```
 npm run build
