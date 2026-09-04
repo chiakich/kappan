@@ -44,7 +44,7 @@ const DIALS = [
   { id: 'wear', label: '字面磨損', why: '舊字的字面被磨鈍、邊上崩角、也印得比較淡', max: 2, press: true },
   { id: 'unevenness', label: '字內墨量差異', why: '鉛字沒坐平，一顆字裡一側飽一側虛', max: 2, press: true },
   { id: 'jitter', label: '字間墨量差異', why: '這一顆吃飽了墨，那一顆沾得少', max: 2, live: true },
-  { id: 'lean', label: '字間歪斜', why: '每顆字擺進去都差那麼一點', max: 2, live: true },
+  { id: 'lean', label: '字間歪斜', why: '每顆字擺進去都差那麼一點', max: 2, value: 0.2, live: true },
   { id: 'texture', label: '紙紋', why: '', max: 1, live: true },
   { id: 'pitch', label: '行距', why: '', min: 1, max: 3, value: 1.9, live: true, unit: 'em' },
   { id: 'tracking', label: '字距', why: '', max: 0.6, step: 0.02, value: 0, live: true, unit: 'em' },

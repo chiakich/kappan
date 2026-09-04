@@ -8,7 +8,7 @@
   --type: 'I.Ming', 'IMing', 'Noto Serif TC', 'Songti TC', serif;
   --latin: 'Courier New', ui-monospace, monospace;
   --pitch: 46px;
-  --lean: 1;
+  --lean: 0.2;
   --weight: 1;
   --texture: 1;
   --ruled: color-mix(in srgb, var(--red) 15%, transparent);

@@ -32,7 +32,8 @@ export interface LetterpressOptions {
   /** 直排格線間距，也是 .lp-typed 的行高。 */
   pitch?: string
   /**
-   * 逐字歪斜的程度。0 是完全排正，1 是預設。也可以在任何一段上直接改 --lean。
+   * 逐字歪斜的程度。0 是完全排正，1 是「排字工手抖」的基準刻度，預設 .2 只留一點活氣。
+   * 也可以在任何一段上直接改 --lean。
    */
   lean?: number
   /** 逐字墨色濃淡的程度。0 是墨色完全均勻，1 是預設。對應 --weight。 */
@@ -78,7 +79,7 @@ export const resolveOptions = (o: LetterpressOptions = {}): ResolvedOptions => (
   filters: o.filters ?? {},
   variants: o.variants ?? false,
   pitch: o.pitch ?? '46px',
-  lean: o.lean ?? 1,
+  lean: o.lean ?? 0.2,
   weight: o.weight ?? 1,
   texture: o.texture ?? 1,
   idPrefix: o.idPrefix ?? 'lp',

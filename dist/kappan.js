@@ -10,7 +10,7 @@ var resolveOptions = (o = {}) => ({
   filters: o.filters ?? {},
   variants: o.variants ?? false,
   pitch: o.pitch ?? "46px",
-  lean: o.lean ?? 1,
+  lean: o.lean ?? 0.2,
   weight: o.weight ?? 1,
   texture: o.texture ?? 1,
   idPrefix: o.idPrefix ?? "lp",
