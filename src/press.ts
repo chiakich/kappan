@@ -78,9 +78,9 @@ const inkEqOf = (p: Press) =>
 
 /**
  * 邊實中淡的程度。只有壓過頭才出現，中性以下是 0，所以四個成因全 1 時不作用。
- * 上限 .25：試過 .4，中央灰到像雙線描邊，那是空心字不是印壓。
+ * 上限 .12：.25 在 2x 螢幕上內部已經灰到像雙線描邊，那是空心字不是印壓。
  */
-const rimOf = (p: Press) => clamp(Math.max(0, p.pressure - 1) * 0.25, 0, 0.25)
+const rimOf = (p: Press) => clamp(Math.max(0, p.pressure - 1) * 0.12, 0, 0.12)
 
 /**
  * 壓痕深度。也是只有壓過頭才有：kiss impression 剛好吻到紙，不留坑。
@@ -109,6 +109,7 @@ const common = (
     threshold: number
     round: BleedKernel
     roundThreshold: number
+    bleed: BleedKernel
   },
   fill: number
 ) => ({
@@ -135,8 +136,8 @@ const common = (
   deboss: debossOf(p),
   voidThreshold: clamp(d.voidThreshold - starveOf(p) * 0.28, 0.35, 1),
   // 吸墨的紙會讓邊緣滲開；墨上太多的話，再光滑的紙也擋不住。
-  // 一律用 5：3 的暈圈只有 1px，拉硬還沒推到底就把它吃完了，再推也不會更胖。
-  bleed: (p.paper >= 0.5 || inkEqOf(p) >= 1.3 ? 5 : false) as 5 | false,
+  // 中性紙沿用各級預設（那就是對著見本調出來的值），紙粗或墨多才一律升到 5，塗佈紙不暈。
+  bleed: (p.paper >= 1.3 || inkEqOf(p) >= 1.3 ? 5 : p.paper >= 0.5 ? d.bleed : false) as BleedKernel,
   // 拉硬同時管兩件事：墨少時把淡的部分吃掉（筆畫變細），墨多時把卷積暈出來的
   // 那一圈全部變實心（筆畫變胖）。threshold 到 0 為止 —— 再正下去連全透明的
   // 地方都會被拉起來，整個方框會發灰。
@@ -161,6 +162,8 @@ const chip = (p: Press, d: typeof FILTER_DEFAULTS.text, fill: number): Partial<C
   // 遠端錨點從 0.4 收到 0.7。缺口變大主要交給邊緣帶去限位，不靠把噪點調粗。
   chipFrequency: clamp(ramp(p.wear, d.chipFrequency * 1.62, d.chipFrequency, d.chipFrequency * 0.7), 0.15, 3),
   chipEdge: d.chipEdge,
+  // 字內濃淡跟 -x 一樣由墨量驅動：墨多趨於均勻，墨少一顆字裡的虛處更虛。預設 1（關）的級數不動。
+  inkFloor: d.inkFloor >= 1 ? 1 : clamp(ramp(p.ink, d.inkFloor * 0.6, d.inkFloor, 1), 0, 1),
 })
 
 const ink = (p: Press, d: typeof FILTER_DEFAULTS.large, fill: number): Partial<InkTuning> => ({

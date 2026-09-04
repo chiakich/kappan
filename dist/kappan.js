@@ -60,23 +60,27 @@ var SMALL = {
   rim: 0,
   deboss: 0,
   chipFrequency: 1.7,
-  chipAmount: 1 / 7,
+  chipAmount: 0.16,
   voidFrequency: 0.35,
   voidThreshold: 0.66,
   voidHardness: 40,
   voidOctaves: 3,
   voidSeed: 71,
   round: false,
-  roundThreshold: 0.42,
+  roundThreshold: 0.41,
   chipEdge: 3,
   bleed: 3,
-  contrast: 2.7,
+  contrast: 1.5,
   threshold: -0.1,
   fade: 1,
+  inkFrequency: 0.2,
+  inkFloor: 1,
   grainOctaves: 2,
   chipOctaves: 3,
   seed: 4,
   chipSeed: 31,
+  inkOctaves: 2,
+  inkSeed: 23,
   margin: 14,
   edgeThreshold: 0.8,
   warpFrequency: 0.03,
@@ -87,30 +91,34 @@ var SMALL = {
 };
 var TEXT = {
   grainFrequency: 0.88,
-  displace: 1.1,
+  displace: 0.65,
   warp: 0,
   dilate: 0,
   squash: 1,
   rim: 0,
   deboss: 0,
   chipFrequency: 1.05,
-  chipAmount: 1 / 7,
+  chipAmount: 0.15,
   voidFrequency: 0.35,
-  voidThreshold: 0.66,
+  voidThreshold: 0.68,
   voidHardness: 40,
   voidOctaves: 3,
   voidSeed: 71,
   round: false,
-  roundThreshold: 0.42,
+  roundThreshold: 0.41,
   chipEdge: 3,
   bleed: 3,
-  contrast: 3.2,
-  threshold: -0.12,
+  contrast: 1.4,
+  threshold: -0.1,
   fade: 1,
+  inkFrequency: 0.13,
+  inkFloor: 0.8,
   grainOctaves: 3,
   chipOctaves: 4,
   seed: 9,
   chipSeed: 27,
+  inkOctaves: 2,
+  inkSeed: 23,
   margin: 16,
   edgeThreshold: 0.8,
   warpFrequency: 0.03,
@@ -121,30 +129,34 @@ var TEXT = {
 };
 var HEADING = {
   grainFrequency: 0.6,
-  displace: 1.5,
-  warp: 1.2,
-  dilate: 0.2,
-  squash: 1.4,
+  displace: 0.65,
+  warp: 0.4,
+  dilate: 0.1,
+  squash: 0.8,
   rim: 0,
   deboss: 0,
   chipFrequency: 0.5,
-  chipAmount: 0.25,
+  chipAmount: 0.295,
   voidFrequency: 0.35,
   voidThreshold: 0.72,
   voidHardness: 40,
   voidOctaves: 3,
   voidSeed: 71,
   round: 3,
-  roundThreshold: 0.42,
+  roundThreshold: 0.41,
   chipEdge: 5,
-  bleed: false,
-  contrast: 3.3,
-  threshold: -0.07,
+  bleed: 3,
+  contrast: 1,
+  threshold: -0.095,
   fade: 1,
+  inkFrequency: 0.157,
+  inkFloor: 0.87,
   grainOctaves: 3,
   chipOctaves: 4,
   seed: 13,
   chipSeed: 19,
+  inkOctaves: 2,
+  inkSeed: 23,
   margin: 22,
   edgeThreshold: 0.8,
   warpFrequency: 0.03,
@@ -155,24 +167,24 @@ var HEADING = {
 };
 var LARGE = {
   grainFrequency: 0.34,
-  displace: 1.6,
-  warp: 2.2,
+  displace: 1.2,
+  warp: 0.8,
   rim: 0,
   deboss: 0,
-  inkFrequency: 0.055,
-  inkFloor: 0.52,
+  inkFrequency: 0.06,
+  inkFloor: 0.5,
   pinFrequency: 0.55,
   pinAmount: 1 / 12,
   voidFrequency: 0.35,
-  voidThreshold: 0.72,
+  voidThreshold: 0.66,
   voidHardness: 40,
   voidOctaves: 3,
   voidSeed: 71,
   round: false,
-  roundThreshold: 0.42,
+  roundThreshold: 0.49,
   chipEdge: 5,
-  bleed: false,
-  contrast: 1.25,
+  bleed: 5,
+  contrast: 1.8,
   threshold: -0.03,
   fade: 1,
   grainOctaves: 3,
@@ -191,11 +203,6 @@ var STEPS = 48;
 var discreteTable = (amount) => {
   const ones = Math.max(0, Math.min(STEPS, Math.round(amount * STEPS)));
   return Array.from({ length: STEPS }, (_, i) => i >= STEPS - ones ? 1 : 0).join(" ");
-};
-var inkTable = (floor) => {
-  const f = Math.max(0, Math.min(1, floor));
-  const at = (t) => +(f + (1 - f) * t).toFixed(3);
-  return [at(0), at(0.65), at(0.94), 1, 1, 1, at(0.8), at(0.35)].join(" ");
 };
 var clamp01 = (n) => Math.max(0, Math.min(1, n));
 var voidPass = (t, input, strength, interior) => {
@@ -261,11 +268,30 @@ var fadePass = (fade, input, out) => fade >= 1 ? { markup: "", out: input } : {
 `,
   out
 };
+var densityMask = (t, floor, out) => {
+  const K = 3.2;
+  const at = (x) => +(floor + (1 - floor) * x).toFixed(3);
+  const table = [at(0), at(0.45), at(0.85), 1, 1].join(" ");
+  return `  <feTurbulence type="fractalNoise" baseFrequency="${t.inkFrequency}" numOctaves="${t.inkOctaves}" seed="${t.inkSeed}" result="${out}N"/>
+  <feColorMatrix in="${out}N" type="luminanceToAlpha" result="${out}L"/>
+  <feComponentTransfer in="${out}L" result="${out}S"><feFuncA type="linear" slope="${K}" intercept="${+(0.5 - 0.5 * K).toFixed(3)}"/></feComponentTransfer>
+  <feComponentTransfer in="${out}S" result="${out}"><feFuncA type="table" tableValues="${table}"/></feComponentTransfer>
+`;
+};
+var inkPass = (t, input, strength, out) => {
+  const floor = clamp01(1 - (1 - t.inkFloor) * strength);
+  if (floor >= 1) return { markup: "", out: input };
+  return {
+    markup: `${densityMask(t, floor, "cinkmask")}  <feComposite in="${input}" in2="cinkmask" operator="in" result="${out}"/>
+`,
+    out
+  };
+};
 var debossPass = (t, shape, ink2, strength, out) => {
   const depth = Math.min(1, t.deboss * strength);
   if (depth <= 0 || t.pitRadius <= 0) return { markup: "", out: ink2 };
   const shade = +(0.16 * depth).toFixed(3);
-  const light = +(0.28 * depth).toFixed(3);
+  const light = +(0.1 * depth).toFixed(3);
   const k = KERNELS[3];
   const soften = (input, out2) => `  <feConvolveMatrix in="${input}" order="3" kernelMatrix="${k.matrix}" divisor="${k.divisor}" edgeMode="none" result="${out2}"/>
 `;
@@ -274,13 +300,11 @@ var debossPass = (t, shape, ink2, strength, out) => {
   <feOffset in="pit" dx="1" dy="1" result="pitSE"/>
   <feComposite in="pit" in2="pitSE" operator="out" result="wallNW"/>
   <feComposite in="wallNW" in2="${ink2}" operator="out" result="wallNWp"/>
-${soften("wallNWp", "wallNWs")}  <feFlood flood-color="#000" flood-opacity="${shade}" result="shadeC"/>
-  <feComposite in="shadeC" in2="wallNWs" operator="in" result="shade"/>
+${soften("wallNWp", "wallNWs")}  <feColorMatrix in="wallNWs" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 ${shade} 0" result="shade"/>
   <feOffset in="pit" dx="-1" dy="-1" result="pitNW"/>
   <feComposite in="pit" in2="pitNW" operator="out" result="wallSE"/>
   <feComposite in="wallSE" in2="${ink2}" operator="out" result="wallSEp"/>
-${soften("wallSEp", "wallSEs")}  <feFlood flood-color="#fff" flood-opacity="${light}" result="lightC"/>
-  <feComposite in="lightC" in2="wallSEs" operator="in" result="light"/>
+${soften("wallSEp", "wallSEs")}  <feColorMatrix in="wallSEs" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 ${light} 0" result="light"/>
   <feMerge result="${out}"><feMergeNode in="shade"/><feMergeNode in="light"/><feMergeNode in="${ink2}"/></feMerge>
 `,
     out
@@ -314,7 +338,8 @@ var chipFilter = (id, t, strength) => {
   const band = edgeBand(t, base);
   const gap = voidPass(t, "chipped", strength, band.out ? "einner" : void 0);
   const squash = dilate > 0 ? squashPass(t, "rough", "grown", strength, "gain") : "";
-  const rim = rimPass(t.rim, "hard", band.out ? "einner" : void 0, "rimmed");
+  const inked = inkPass(t, "hard", strength, "inked");
+  const rim = rimPass(t.rim, inked.out, band.out ? "einner" : void 0, "rimmed");
   const fade = fadePass(t.fade, rim.out, "faded");
   const deboss = debossPass(t, "rough", fade.out, strength, "pressed");
   const grow = dilate > 0 ? `  <feMorphology in="rough" operator="dilate" radius="${+dilate.toFixed(3)}" result="${squash ? "grown" : "gain"}"/>
@@ -329,7 +354,7 @@ ${grow}  <feTurbulence type="fractalNoise" baseFrequency="${t.chipFrequency}" nu
 ${band.markup}${band.out ? `  <feComposite in="chip" in2="${band.out}" operator="in" result="chipRim"/>
 ` : ""}  <feComposite in="${base}" in2="${band.out ? "chipRim" : "chip"}" operator="out" result="chipped"/>
 ${gap.markup}${bleedFilter(gap.out, t.bleed)}  <feComponentTransfer in="${t.bleed ? "b" : gap.out}" result="hard"><feFuncA type="linear" slope="${t.contrast}" intercept="${t.threshold}"/></feComponentTransfer>
-${rim.markup}${fade.markup}${deboss.markup}</filter>`;
+${inked.markup}${rim.markup}${fade.markup}${deboss.markup}</filter>`;
 };
 var inkFilter = (id, t, strength) => {
   const size2 = 100 + t.margin * 2;
@@ -345,10 +370,7 @@ var inkFilter = (id, t, strength) => {
 <filter id="${id}" x="-${t.margin}%" y="-${t.margin}%" width="${size2}%" height="${size2}%" color-interpolation-filters="sRGB">
 ${shaped.markup}${warped.markup}  <feTurbulence type="fractalNoise" baseFrequency="${t.grainFrequency}" numOctaves="${t.grainOctaves}" seed="${t.seed}" result="fib"/>
   <feDisplacementMap in="${warped.out}" in2="fib" scale="${+(t.displace * strength).toFixed(3)}" xChannelSelector="R" yChannelSelector="G" result="rough"/>
-  <feTurbulence type="fractalNoise" baseFrequency="${t.inkFrequency}" numOctaves="${t.inkOctaves}" seed="${t.inkSeed}" result="ink"/>
-  <feColorMatrix in="ink" type="luminanceToAlpha" result="inkl"/>
-  <feComponentTransfer in="inkl" result="inkmask"><feFuncA type="table" tableValues="${inkTable(floor)}"/></feComponentTransfer>
-  <feComposite in="rough" in2="inkmask" operator="in" result="uneven"/>
+${densityMask(t, floor, "inkmask")}  <feComposite in="rough" in2="inkmask" operator="in" result="uneven"/>
   <feTurbulence type="fractalNoise" baseFrequency="${t.pinFrequency}" numOctaves="${t.pinOctaves}" seed="${t.pinSeed}" result="pin"/>
   <feColorMatrix in="pin" type="luminanceToAlpha" result="pinl"/>
   <feComponentTransfer in="pinl" result="pinmask"><feFuncA type="discrete" tableValues="${discreteTable(clamp01(t.pinAmount * strength))}"/></feComponentTransfer>
@@ -617,7 +639,7 @@ var inkedOf = (p) => clamp(
   1
 );
 var inkEqOf = (p) => clamp(1 - Math.max(0, 1 - p.ink) + Math.max(0, p.ink - 1) + Math.max(0, p.pressure - 1) * 0.2, 0, 2);
-var rimOf = (p) => clamp(Math.max(0, p.pressure - 1) * 0.25, 0, 0.25);
+var rimOf = (p) => clamp(Math.max(0, p.pressure - 1) * 0.12, 0, 0.12);
 var debossOf = (p) => clamp(Math.max(0, p.pressure - 1) * ramp(p.paper, 0.4, 1, 1.3), 0, 1);
 var common = (p, d, fill) => ({
   // 圓角是印刷這個動作本身造成的，跟墨量無關，所以核心不動。但積墨的程度會 ——
@@ -640,8 +662,8 @@ var common = (p, d, fill) => ({
   deboss: debossOf(p),
   voidThreshold: clamp(d.voidThreshold - starveOf(p) * 0.28, 0.35, 1),
   // 吸墨的紙會讓邊緣滲開；墨上太多的話，再光滑的紙也擋不住。
-  // 一律用 5：3 的暈圈只有 1px，拉硬還沒推到底就把它吃完了，再推也不會更胖。
-  bleed: p.paper >= 0.5 || inkEqOf(p) >= 1.3 ? 5 : false,
+  // 中性紙沿用各級預設（那就是對著見本調出來的值），紙粗或墨多才一律升到 5，塗佈紙不暈。
+  bleed: p.paper >= 1.3 || inkEqOf(p) >= 1.3 ? 5 : p.paper >= 0.5 ? d.bleed : false,
   // 拉硬同時管兩件事：墨少時把淡的部分吃掉（筆畫變細），墨多時把卷積暈出來的
   // 那一圈全部變實心（筆畫變胖）。threshold 到 0 為止 —— 再正下去連全透明的
   // 地方都會被拉起來，整個方框會發灰。
@@ -664,7 +686,9 @@ var chip = (p, d, fill) => ({
   // 舊字的缺口比新字大，但別放大到內文級數也長出標題那種尺度的blob ——
   // 遠端錨點從 0.4 收到 0.7。缺口變大主要交給邊緣帶去限位，不靠把噪點調粗。
   chipFrequency: clamp(ramp(p.wear, d.chipFrequency * 1.62, d.chipFrequency, d.chipFrequency * 0.7), 0.15, 3),
-  chipEdge: d.chipEdge
+  chipEdge: d.chipEdge,
+  // 字內濃淡跟 -x 一樣由墨量驅動：墨多趨於均勻，墨少一顆字裡的虛處更虛。預設 1（關）的級數不動。
+  inkFloor: d.inkFloor >= 1 ? 1 : clamp(ramp(p.ink, d.inkFloor * 0.6, d.inkFloor, 1), 0, 1)
 });
 var ink = (p, d, fill) => ({
   ...common(p, d, fill),
