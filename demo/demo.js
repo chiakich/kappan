@@ -39,10 +39,12 @@ $('size').value = 'lp-sz-3'
 const DIALS = [
   { id: 'ink', label: '上墨量', why: '少了筆畫會斷，多了糊成一團', max: 2, press: true },
   { id: 'pressure', label: '壓力', why: '輕了墨轉不滿、整體發灰，重了墨被擠到邊上，邊實中淡、紙上留壓痕', max: 2, press: true },
-  { id: 'paper-grade', label: '紙的粗糙', why: '光滑的塗佈紙，到粗糙吸墨的手工紙', max: 2, press: true },
-  { id: 'wear', label: '鉛字年紀', why: '舊字的字面被磨鈍、邊上崩角、也印得比較淡', max: 2, press: true },
-  { id: 'lean', label: '歪斜', why: '每顆字擺進去都差那麼一點', max: 2, live: true },
-  { id: 'jitter', label: '濃淡差異', why: '這一顆吃飽了墨，那一顆沾得少', max: 2, live: true },
+  { id: 'roughness', label: '紙面粗糙', why: '光滑的塗佈紙，到纖維把筆畫邊推歪的手工紙', max: 2, press: true },
+  { id: 'absorbency', label: '紙的吸墨', why: '塗佈紙不暈，新聞紙平但很吸墨、邊緣滲開', max: 2, press: true },
+  { id: 'wear', label: '字面磨損', why: '舊字的字面被磨鈍、邊上崩角、也印得比較淡', max: 2, press: true },
+  { id: 'unevenness', label: '字內墨量差異', why: '鉛字沒坐平，一顆字裡一側飽一側虛', max: 2, press: true },
+  { id: 'jitter', label: '字間墨量差異', why: '這一顆吃飽了墨，那一顆沾得少', max: 2, live: true },
+  { id: 'lean', label: '字間歪斜', why: '每顆字擺進去都差那麼一點', max: 2, live: true },
   { id: 'texture', label: '紙紋', why: '', max: 1, live: true },
   { id: 'pitch', label: '行距', why: '', min: 1, max: 3, value: 1.9, live: true, unit: 'em' },
   { id: 'tracking', label: '字距', why: '', max: 0.6, step: 0.02, value: 0, live: true, unit: 'em' },
@@ -55,17 +57,18 @@ $('dials').innerHTML = DIALS.map(
 </div>`
 ).join('')
 
-const PRESS = { ink: 'ink', pressure: 'pressure', paper: 'paper-grade', wear: 'wear' }
+const PRESS = { ink: 'ink', pressure: 'pressure', roughness: 'roughness', absorbency: 'absorbency', wear: 'wear', unevenness: 'unevenness' }
 const readPress = () => Object.fromEntries(Object.entries(PRESS).map(([k, id]) => [k, Number($(id).value)]))
 
 /* ── 印壞的幾種樣子 ──────────────────────────────────────── */
-// 四個成因同時往缺墨的方向偏，缺塊會疊到字整個碎掉。這幾組都留在讀得出字的範圍內。
+// 成因同時往缺墨的方向偏，缺塊會疊到字整個碎掉。這幾組都留在讀得出字的範圍內。
 const PRESETS = {
   標準: NEUTRAL_PRESS,
-  墨上太多: { ink: 1.75, pressure: 1.3, paper: 1, wear: 1 },
-  墨不夠: { ink: 0.6, pressure: 0.8, paper: 1.1, wear: 1 },
-  粗紙手刷: { ink: 1.05, pressure: 0.8, paper: 1.7, wear: 1.15 },
-  新字好紙: { ink: 1, pressure: 1.4, paper: 0.2, wear: 0 },
+  墨上太多: { ink: 1.75, pressure: 1.3, roughness: 1, absorbency: 1, wear: 1, unevenness: 0.6 },
+  墨不夠: { ink: 0.6, pressure: 0.8, roughness: 1.1, absorbency: 1, wear: 1, unevenness: 1.4 },
+  粗紙手刷: { ink: 1.05, pressure: 0.8, roughness: 1.7, absorbency: 1.6, wear: 1.15, unevenness: 1.3 },
+  新聞紙: { ink: 1.1, pressure: 1, roughness: 0.6, absorbency: 1.6, wear: 1.2, unevenness: 1 },
+  新字好紙: { ink: 1, pressure: 1.4, roughness: 0.2, absorbency: 0.3, wear: 0, unevenness: 0.5 },
 }
 $('presets').innerHTML = Object.keys(PRESETS)
   .map((n) => `<button type="button" class="sg key" data-preset="${n}">${n}</button>`)
@@ -360,7 +363,7 @@ $('face').addEventListener('change', () => {
 })
 $('weight').addEventListener('change', () => void loadFace())
 
-// id 撞名是這頁最容易犯又最難看出來的錯（滑桿與色票各有一組同名的 ink/paper），
+// id 撞名是這頁最容易犯又最難看出來的錯（上墨量滑桿叫 ink，色票才叫 c-ink），
 // 所以啟動時自己查一次，撞了就吵。
 const ids = [...document.querySelectorAll('[id]')].map((el) => el.id)
 const dupes = ids.filter((id, i) => ids.indexOf(id) !== i)

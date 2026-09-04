@@ -70,10 +70,10 @@ class 同時決定字級與該用哪支濾鏡。這兩件事本來就綁在一�
 要無段調整就用印刷的成因，不必碰濾鏡參數：
 
 ```js
-letterpressCss({ filters: pressTuning({ ink: 1.6, paper: 2 }) })
+letterpressCss({ filters: pressTuning({ ink: 1.6, absorbency: 2 }) })
 ```
 
-`pressTuning({ ink, pressure, paper, wear })` 四個都設 1 就是預設值。一個成因會同時牽動好幾道濾鏡，墨上多了會同時讓筆畫變胖、少缺、邊緣更實。真的要逐項調的話 `FilterTuning` 開放了每一支的參數，`FILTER_DEFAULTS` 可以讀出預設值當基準。
+`pressTuning({ ink, pressure, roughness, absorbency, wear, unevenness })` 六個都設 1 就是預設值：上墨量、壓力、紙面粗糙、紙的吸墨、字面磨損、字內墨量差異。舊寫法的 `paper` 還接受，等於同時給粗糙與吸墨。一個成因會同時牽動好幾道濾鏡，墨上多了會同時讓筆畫變胖、少缺、邊緣更實。真的要逐項調的話 `FilterTuning` 開放了每一支的參數，`FILTER_DEFAULTS` 可以讀出預設值當基準。
 
 ## 濾鏡差異
 

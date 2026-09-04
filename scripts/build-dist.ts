@@ -160,7 +160,7 @@ ${VARIANT_NAMES.map((v) => `- \`.lp-${v}\``).join('\n')}
 import { mount, pressTuning } from './kappan.js'
 
 // 四個成因，不是四道濾鏡。動一個，好幾支濾鏡的參數會一起變。
-const dispose = mount({ filters: pressTuning({ ink: 1.4, pressure: .8, paper: 1.6, wear: 1.2 }) })
+const dispose = mount({ filters: pressTuning({ ink: 1.4, pressure: .8, roughness: 1.6, absorbency: 1.4, wear: 1.2 }) })
 \`\`\`
 
 \`mount()\` 會把樣式與濾鏡塞進 \`<head>\`，回傳一個拆掉它們的函式；換參數就是 dispose 再 mount 一次。

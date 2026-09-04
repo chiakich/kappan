@@ -7,7 +7,7 @@ import { FILTER_DEFAULTS, type BleedKernel, type ChipTuning, type FilterTuning, 
  * 一個成因會同時牽動好幾道濾鏡 —— 上墨量一動，缺塊、拉硬、墨暈都得跟著改，
  * 因為墨多本來就同時讓筆畫變胖、少缺、邊緣更實。那個對應關係就是這個檔案。
  *
- * 四個成因全設 1 時，每一級都精確落回自己的預設值。所以這是預設值的延伸，
+ * 六個成因全設 1 時，每一級都精確落回自己的預設值。所以這是預設值的延伸，
  * 不是另一套 —— 外側的錨點一律寫成各級預設的倍數，換級也成立。
  */
 
@@ -16,13 +16,35 @@ export interface Press {
   ink: number
   /** 壓力。輕了印不滿，重了墨被擠出邊緣。 */
   pressure: number
-  /** 紙的粗糙與吸墨程度。光滑塗佈紙 0，粗糙的手工紙 2。 */
-  paper: number
-  /** 鉛字用了多久。新字 0，崩角的舊字 2。 */
+  /**
+   * 紙面粗糙。管邊緣被纖維推歪、整條筆畫彎曲、印不滿的鹽粒、壓痕的坑壁，還有紙紋。
+   * 光滑塗佈紙 0，粗糙手工紙 2。
+   */
+  roughness: number
+  /**
+   * 紙的吸墨。管墨暈。跟粗糙是兩個不同的紙性：塗佈紙兩者都低、手工紙兩者都高，
+   * 新聞紙是平的但很吸墨。0 不暈，2 暈到 5×5。
+   */
+  absorbency: number
+  /** 字面磨損。新字 0，崩角的舊字 2。 */
   wear: number
+  /**
+   * 字內墨量差異。鉛字沒坐平、排版沒壓實，一顆字裡一側飽一側虛。
+   * 0 完全均勻，2 虛處再虛一倍。物理上跟墨多少無關，所以自己一個成因。
+   */
+  unevenness: number
 }
 
-export const NEUTRAL_PRESS: Press = { ink: 1, pressure: 1, paper: 1, wear: 1 }
+/** 舊的四成因寫法：paper 同時給粗糙與吸墨。還接受，只是不再是型別的一部分。 */
+export type PressInput = Partial<Press> & { paper?: number }
+
+export const NEUTRAL_PRESS: Press = { ink: 1, pressure: 1, roughness: 1, absorbency: 1, wear: 1, unevenness: 1 }
+
+const resolvePress = (p: PressInput): Press => {
+  const { paper, ...rest } = p
+  const legacy = paper === undefined ? {} : { roughness: paper, absorbency: paper }
+  return { ...NEUTRAL_PRESS, ...legacy, ...rest }
+}
 
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n))
 /** 0→1→2 三點折線。1 一律落在 at1 上。 */
@@ -42,7 +64,7 @@ const ramp = (v: number, at0: number, at1: number, at2: number) =>
  * 結果小字被一個根本不該觸發它的成因打碎 —— 缺墨改走 inkedOf，那才是「淡」。
  */
 const starveOf = (p: Press) =>
-  (1 - p.pressure) * 0.55 + (p.paper - 1) * 0.35 + Math.max(0, p.wear - 1) * 0.3
+  (1 - p.pressure) * 0.55 + (p.roughness - 1) * 0.35 + Math.max(0, p.wear - 1) * 0.3
 
 /**
  * 整體墨量。壓力不足、字面磨低於字身高度、墨本來就少 —— 這三件事都是
@@ -51,7 +73,7 @@ const starveOf = (p: Press) =>
  * 之前整條鏈路沒有任何一道能讓字印得比較淡：contrast 是硬化曲線，只會讓字更黑
  * 或更瘦。所以「壓力輕」以前只能靠缺形狀來表現，那不對 —— 壓輕的版是灰的。
  *
- * 四個成因全設 1 時回 1，也就是這一道整個不作用。
+ * 成因全設 1 時回 1，也就是這一道整個不作用。
  */
 const inkedOf = (p: Press) =>
   clamp(
@@ -86,7 +108,18 @@ const rimOf = (p: Press) => clamp(Math.max(0, p.pressure - 1) * 0.12, 0, 0.12)
  * 壓痕深度。也是只有壓過頭才有：kiss impression 剛好吻到紙，不留坑。
  * 紙粗一點坑壁比較不俐落、影子也重一點；光滑的塗佈紙幾乎壓不出坑。
  */
-const debossOf = (p: Press) => clamp(Math.max(0, p.pressure - 1) * ramp(p.paper, 0.4, 1, 1.3), 0, 1)
+const debossOf = (p: Press) => clamp(Math.max(0, p.pressure - 1) * ramp(p.roughness, 0.4, 1, 1.3), 0, 1)
+
+/**
+ * 字內濃淡的深度。主要由 unevenness 決定（0 均勻、2 虛處再虛一倍），墨少時略加深 ——
+ * 墨膜薄，沒坐平的那一側更沒東西可轉印。預設 1（關）的級數維持關。
+ */
+const inkFloorOf = (p: Press, base: number) => {
+  if (base >= 1) return 1
+  // 往上走放緩：-x 的 base 已經是 .5，線性乘 2 會把虛處整個抹掉。
+  const depth = (1 - base) * ramp(p.unevenness, 0, 1, 1.5) * ramp(p.ink, 1.3, 1, 0.6)
+  return clamp(1 - depth, 0.15, 1)
+}
 
 /**
  * 四級共通的部分。錨點都是 d 的倍數，所以每一級各自成立。
@@ -128,16 +161,16 @@ const common = (
       )
     : d.roundThreshold,
   // 紙愈粗，纖維把筆畫推得愈歪；壓力愈大，紙被壓平，推歪反而變少。
-  displace: clamp(d.displace * ramp(p.paper, 0.4, 1, 1.6) * ramp(p.pressure, 1.5, 1, 0.8), 0, 4),
+  displace: clamp(d.displace * ramp(p.roughness, 0.4, 1, 1.6) * ramp(p.pressure, 1.5, 1, 0.8), 0, 4),
   // 整條筆畫的彎曲來自紙面起伏，粗紙起伏大；壓力大會把紙壓平，彎得少。
   // 比 displace 對紙的反應緩 —— 纖維推歪是紙的表面，起伏是紙的厚度，後者變化小。
-  warp: clamp(d.warp * ramp(p.paper, 0.6, 1, 1.4) * ramp(p.pressure, 1.3, 1, 0.85), 0, 6),
+  warp: clamp(d.warp * ramp(p.roughness, 0.6, 1, 1.4) * ramp(p.pressure, 1.3, 1, 0.85), 0, 6),
   rim: rimOf(p),
   deboss: debossOf(p),
   voidThreshold: clamp(d.voidThreshold - starveOf(p) * 0.28, 0.35, 1),
   // 吸墨的紙會讓邊緣滲開；墨上太多的話，再光滑的紙也擋不住。
-  // 中性紙沿用各級預設（那就是對著見本調出來的值），紙粗或墨多才一律升到 5，塗佈紙不暈。
-  bleed: (p.paper >= 1.3 || inkEqOf(p) >= 1.3 ? 5 : p.paper >= 0.5 ? d.bleed : false) as BleedKernel,
+  // 中性沿用各級預設（那就是對著見本調出來的值），很吸墨或墨多才一律升到 5，塗佈紙不暈。
+  bleed: (p.absorbency >= 1.3 || inkEqOf(p) >= 1.3 ? 5 : p.absorbency >= 0.5 ? d.bleed : false) as BleedKernel,
   // 拉硬同時管兩件事：墨少時把淡的部分吃掉（筆畫變細），墨多時把卷積暈出來的
   // 那一圈全部變實心（筆畫變胖）。threshold 到 0 為止 —— 再正下去連全透明的
   // 地方都會被拉起來，整個方框會發灰。
@@ -162,14 +195,12 @@ const chip = (p: Press, d: typeof FILTER_DEFAULTS.text, fill: number): Partial<C
   // 遠端錨點從 0.4 收到 0.7。缺口變大主要交給邊緣帶去限位，不靠把噪點調粗。
   chipFrequency: clamp(ramp(p.wear, d.chipFrequency * 1.62, d.chipFrequency, d.chipFrequency * 0.7), 0.15, 3),
   chipEdge: d.chipEdge,
-  // 字內濃淡跟 -x 一樣由墨量驅動：墨多趨於均勻，墨少一顆字裡的虛處更虛。預設 1（關）的級數不動。
-  inkFloor: d.inkFloor >= 1 ? 1 : clamp(ramp(p.ink, d.inkFloor * 0.6, d.inkFloor, 1), 0, 1),
+  inkFloor: inkFloorOf(p, d.inkFloor),
 })
 
 const ink = (p: Press, d: typeof FILTER_DEFAULTS.large, fill: number): Partial<InkTuning> => ({
   ...common(p, d, fill),
-  // 大字走的是調密度不是挖。墨多則濃淡趨於均勻，墨少則斑塊拉開。
-  inkFloor: clamp(ramp(p.ink, d.inkFloor * 0.6, d.inkFloor, 1), 0, 1),
+  inkFloor: inkFloorOf(p, d.inkFloor),
   // 字面磨損在大字上是砂眼變多，同樣限在邊緣帶內。
   pinAmount: clamp(ramp(p.wear, 0, d.pinAmount, d.pinAmount * 2.4), 0, 0.4),
   chipEdge: d.chipEdge,
@@ -178,8 +209,8 @@ const ink = (p: Press, d: typeof FILTER_DEFAULTS.large, fill: number): Partial<I
 /**
  * 成因 → 四級的濾鏡參數。丟給 letterpressCss / filtersMarkup 的 filters 就好。
  */
-export const pressTuning = (p: Partial<Press> = {}): FilterTuning => {
-  const press = { ...NEUTRAL_PRESS, ...p }
+export const pressTuning = (p: PressInput = {}): FilterTuning => {
+  const press = resolvePress(p)
   // 字愈小，同一層墨膜愈快把字腔填滿。
   return {
     small: chip(press, FILTER_DEFAULTS.small, 3.6),
@@ -190,5 +221,4 @@ export const pressTuning = (p: Partial<Press> = {}): FilterTuning => {
 }
 
 /** 紙粗糙的話紙紋本身也該濃一點 —— 那是同一張紙。搭配 --texture 用。 */
-export const pressTexture = (p: Partial<Press> = {}) =>
-  clamp(ramp({ ...NEUTRAL_PRESS, ...p }.paper, 0.35, 1, 1), 0, 1)
+export const pressTexture = (p: PressInput = {}) => clamp(ramp(resolvePress(p).roughness, 0.35, 1, 1), 0, 1)
