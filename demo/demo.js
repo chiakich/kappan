@@ -86,12 +86,19 @@ for (const t of ['s', 't', 'd', 'x']) sheet.style.setProperty(`--lp-${t}`, `url(
 
 let textureTouched = false
 let raf = 0
+// ?tune 模式會掛一個函式進來，在成因算完之後直接改寫某一級的參數。
+let tuneOverride = null
+const currentFilters = () => {
+  const filters = pressTuning(readPress())
+  tuneOverride?.(filters)
+  return filters
+}
 
 const remount = () => {
   cancelAnimationFrame(raf)
   raf = requestAnimationFrame(() => {
     const press = readPress()
-    const filters = pressTuning(press)
+    const filters = currentFilters()
     editorFilters.innerHTML = filtersMarkup(EDITOR_PREFIX, filters)
     // 紙粗糙的話紙紋本身也該濃一點 —— 那是同一張紙。使用者拉過之後就以他的為準。
     if (!textureTouched) $('texture').value = pressTexture(press).toFixed(2)
@@ -282,7 +289,7 @@ const sheetSpec = (transparent) => {
     letterSpacing: editor.style.letterSpacing || '0em',
     vertical: direction === 'v',
     vars,
-    filters: pressTuning(readPress()),
+    filters: currentFilters(),
     fonts: faceFile ? [faceFile] : [],
     innerWidth: editor.clientWidth - PAD[0] * 2,
     innerHeight: editor.clientHeight - PAD[1] * 2,
@@ -362,3 +369,26 @@ if (dupes.length) console.error('duplicate id:', [...new Set(dupes)])
 editor.textContent = START_TEXT
 compose()
 remount()
+
+/* ── 調參模式 ────────────────────────────────────────────── */
+// 網址帶 ?tune 才載入，平常的示範頁不會多出任何東西。
+if (new URLSearchParams(location.search).has('tune')) {
+  import('./tune.js').then(({ init }) =>
+    init({
+      sheet,
+      remount,
+      pressFilters: () => pressTuning(readPress()),
+      sizeValue: () => $('size').value,
+      setOverride: (fn) => {
+        tuneOverride = fn
+      },
+      setFace: (file) => {
+        family = file.family
+        faceFile = file
+        status.textContent = `${file.family} · ${(file.buffer.byteLength / 1024).toFixed(1)} KB`
+        paint()
+      },
+      onSizeChange: (cb) => $('size').addEventListener('change', cb),
+    })
+  )
+}
